@@ -24,6 +24,11 @@ export default async function CostumePlotPage({ params }: PageProps) {
     include: {
       characters: {
         orderBy: { sortOrder: "asc" },
+        include: {
+          sketches: {
+            orderBy: { sortOrder: "asc" },
+          },
+        },
       },
       scenes: {
         orderBy: { sortOrder: "asc" },
@@ -112,6 +117,29 @@ export default async function CostumePlotPage({ params }: PageProps) {
         actorName: c.actorName,
         color: c.color,
         sortOrder: c.sortOrder,
+        // Actor measurements
+        height: c.height,
+        weight: c.weight,
+        head: c.head,
+        collar: c.collar,
+        chest: c.chest,
+        bust: c.bust,
+        underBust: c.underBust,
+        waist: c.waist,
+        hip: c.hip,
+        inseam: c.inseam,
+        outseam: c.outseam,
+        sleeve: c.sleeve,
+        shoeSize: c.shoeSize,
+        // Character sketches
+        sketches: c.sketches.map((s) => ({
+          id: s.id,
+          url: s.url,
+          key: s.key,
+          name: s.name,
+          description: s.description,
+          sceneId: s.sceneId,
+        })),
       }))}
       scenes={production.scenes.map((s) => ({
         id: s.id,

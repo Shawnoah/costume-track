@@ -309,9 +309,33 @@ model ProductionCharacter {
   updatedAt    DateTime  @updatedAt
   productionId String
 
+  // Actor Measurements (all optional, stored as strings for flexibility)
+  height       String?   // e.g., "5'10\"" or "178cm"
+  weight       String?   // e.g., "165 lbs" or "75kg"
+
+  // Head & Neck
+  head         String?   // Circumference above ears/brow
+  collar       String?   // Neck circumference
+
+  // Upper Body
+  chest        String?   // At widest part (men) or bust (women)
+  bust         String?   // Women: at fullest part
+  underBust    String?   // Women: directly beneath bust
+  waist        String?   // Natural waistline (narrowest part)
+
+  // Lower Body
+  hip          String?   // Fullest part of hips/buttocks
+  inseam       String?   // Top of inner leg to ankle
+  outseam      String?   // Waist to ankle (outer leg)
+
+  // Arms & Misc
+  sleeve       String?   // Shoulder to wrist
+  shoeSize     String?   // e.g., "10" or "10W" or "42 EU"
+
   // Relations
   production   Production @relation(fields: [productionId], references: [id], onDelete: Cascade)
   costumeAssignments CostumeAssignment[]
+  sketches     CharacterSketch[]
 
   @@index([productionId])
 }
@@ -330,6 +354,7 @@ model ProductionScene {
   // Relations
   production   Production @relation(fields: [productionId], references: [id], onDelete: Cascade)
   costumeAssignments CostumeAssignment[]
+  sketches     CharacterSketch[]
 
   @@index([productionId])
   @@index([sortOrder])
@@ -355,6 +380,26 @@ model CostumeAssignment {
   @@index([characterId])
   @@index([sceneId])
   @@index([costumeItemId])
+}
+
+// Costume concept sketches/designs for characters
+model CharacterSketch {
+  id           String    @id @default(cuid())
+  url          String    // Image URL
+  key          String    // Blob storage key for deletion
+  name         String?   // Optional name for the sketch
+  description  String?   // Designer notes
+  sortOrder    Int       @default(0)
+  createdAt    DateTime  @default(now())
+  characterId  String
+  sceneId      String?   // Optional - if specific to a scene
+
+  // Relations
+  character    ProductionCharacter @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  scene        ProductionScene? @relation(fields: [sceneId], references: [id], onDelete: SetNull)
+
+  @@index([characterId])
+  @@index([sceneId])
 }
 
 // ============================================

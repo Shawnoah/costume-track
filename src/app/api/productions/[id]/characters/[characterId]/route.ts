@@ -9,6 +9,20 @@ const updateCharacterSchema = z.object({
   description: z.string().nullable().optional(),
   color: z.string().nullable().optional(),
   sortOrder: z.number().int().optional(),
+  // Actor measurements
+  height: z.string().nullable().optional(),
+  weight: z.string().nullable().optional(),
+  head: z.string().nullable().optional(),
+  collar: z.string().nullable().optional(),
+  chest: z.string().nullable().optional(),
+  bust: z.string().nullable().optional(),
+  underBust: z.string().nullable().optional(),
+  waist: z.string().nullable().optional(),
+  hip: z.string().nullable().optional(),
+  inseam: z.string().nullable().optional(),
+  outseam: z.string().nullable().optional(),
+  sleeve: z.string().nullable().optional(),
+  shoeSize: z.string().nullable().optional(),
 });
 
 export async function PATCH(
@@ -46,6 +60,20 @@ export async function PATCH(
         description: data.description,
         color: data.color,
         sortOrder: data.sortOrder,
+        // Actor measurements
+        height: data.height,
+        weight: data.weight,
+        head: data.head,
+        collar: data.collar,
+        chest: data.chest,
+        bust: data.bust,
+        underBust: data.underBust,
+        waist: data.waist,
+        hip: data.hip,
+        inseam: data.inseam,
+        outseam: data.outseam,
+        sleeve: data.sleeve,
+        shoeSize: data.shoeSize,
       },
     });
 

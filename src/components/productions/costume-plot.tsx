@@ -39,7 +39,23 @@ import {
   Shirt,
   Zap,
   Check,
+  Ruler,
+  ImageIcon,
+  X,
+  Upload,
 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { useDropzone } from "react-dropzone";
+
+interface CharacterSketch {
+  id: string;
+  url: string;
+  key: string;
+  name: string | null;
+  description: string | null;
+  sceneId: string | null;
+}
 
 interface Character {
   id: string;
@@ -47,6 +63,22 @@ interface Character {
   actorName: string | null;
   color: string | null;
   sortOrder: number;
+  // Actor measurements
+  height: string | null;
+  weight: string | null;
+  head: string | null;
+  collar: string | null;
+  chest: string | null;
+  bust: string | null;
+  underBust: string | null;
+  waist: string | null;
+  hip: string | null;
+  inseam: string | null;
+  outseam: string | null;
+  sleeve: string | null;
+  shoeSize: string | null;
+  // Character sketches
+  sketches: CharacterSketch[];
 }
 
 interface Scene {
@@ -111,6 +143,8 @@ export function CostumePlot({
     scene: Scene;
     existing: Assignment | null;
   } | null>(null);
+  const [measurementsDialog, setMeasurementsDialog] = useState<Character | null>(null);
+  const [sketchesDialog, setSketchesDialog] = useState<Character | null>(null);
 
   // Form states
   const [loading, setLoading] = useState(false);
@@ -122,6 +156,28 @@ export function CostumePlot({
   const [selectedCostumeId, setSelectedCostumeId] = useState<string | null>(null);
   const [assignmentNotes, setAssignmentNotes] = useState("");
   const [costumeSearchOpen, setCostumeSearchOpen] = useState(false);
+
+  // Measurements form state
+  const [measurements, setMeasurements] = useState({
+    height: "",
+    weight: "",
+    head: "",
+    collar: "",
+    chest: "",
+    bust: "",
+    underBust: "",
+    waist: "",
+    hip: "",
+    inseam: "",
+    outseam: "",
+    sleeve: "",
+    shoeSize: "",
+  });
+
+  // Sketch upload state
+  const [uploadingSketch, setUploadingSketch] = useState(false);
+  const [sketchName, setSketchName] = useState("");
+  const [sketchDescription, setSketchDescription] = useState("");
 
   const refreshData = useCallback(() => {
     router.refresh();
@@ -290,6 +346,188 @@ export function CostumePlot({
     setAssignmentNotes(existing?.notes || "");
   }
 
+  function openMeasurementsDialog(character: Character) {
+    setMeasurements({
+      height: character.height || "",
+      weight: character.weight || "",
+      head: character.head || "",
+      collar: character.collar || "",
+      chest: character.chest || "",
+      bust: character.bust || "",
+      underBust: character.underBust || "",
+      waist: character.waist || "",
+      hip: character.hip || "",
+      inseam: character.inseam || "",
+      outseam: character.outseam || "",
+      sleeve: character.sleeve || "",
+      shoeSize: character.shoeSize || "",
+    });
+    setMeasurementsDialog(character);
+  }
+
+  async function handleSaveMeasurements() {
+    if (!measurementsDialog) return;
+    setLoading(true);
+
+    try {
+      const res = await fetch(
+        `/api/productions/${production.id}/characters/${measurementsDialog.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            height: measurements.height || null,
+            weight: measurements.weight || null,
+            head: measurements.head || null,
+            collar: measurements.collar || null,
+            chest: measurements.chest || null,
+            bust: measurements.bust || null,
+            underBust: measurements.underBust || null,
+            waist: measurements.waist || null,
+            hip: measurements.hip || null,
+            inseam: measurements.inseam || null,
+            outseam: measurements.outseam || null,
+            sleeve: measurements.sleeve || null,
+            shoeSize: measurements.shoeSize || null,
+          }),
+        }
+      );
+
+      if (!res.ok) throw new Error("Failed to save measurements");
+
+      // Update local state
+      setCharacters(
+        characters.map((c) =>
+          c.id === measurementsDialog.id
+            ? {
+                ...c,
+                ...measurements,
+                height: measurements.height || null,
+                weight: measurements.weight || null,
+                head: measurements.head || null,
+                collar: measurements.collar || null,
+                chest: measurements.chest || null,
+                bust: measurements.bust || null,
+                underBust: measurements.underBust || null,
+                waist: measurements.waist || null,
+                hip: measurements.hip || null,
+                inseam: measurements.inseam || null,
+                outseam: measurements.outseam || null,
+                sleeve: measurements.sleeve || null,
+                shoeSize: measurements.shoeSize || null,
+              }
+            : c
+        )
+      );
+      setMeasurementsDialog(null);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function openSketchesDialog(character: Character) {
+    setSketchName("");
+    setSketchDescription("");
+    setSketchesDialog(character);
+  }
+
+  async function handleUploadSketch(file: File) {
+    if (!sketchesDialog) return;
+    setUploadingSketch(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const uploadRes = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!uploadRes.ok) throw new Error("Upload failed");
+
+      const { url, key } = await uploadRes.json();
+
+      // Save sketch to database
+      const res = await fetch(
+        `/api/productions/${production.id}/characters/${sketchesDialog.id}/sketches`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            url,
+            key,
+            name: sketchName || null,
+            description: sketchDescription || null,
+          }),
+        }
+      );
+
+      if (!res.ok) throw new Error("Failed to save sketch");
+
+      const newSketch = await res.json();
+
+      // Update local state
+      setCharacters(
+        characters.map((c) =>
+          c.id === sketchesDialog.id
+            ? { ...c, sketches: [...c.sketches, newSketch] }
+            : c
+        )
+      );
+      setSketchesDialog(
+        characters.find((c) => c.id === sketchesDialog.id) || null
+      );
+      setSketchName("");
+      setSketchDescription("");
+      refreshData();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setUploadingSketch(false);
+    }
+  }
+
+  async function handleDeleteSketch(sketchId: string) {
+    if (!sketchesDialog) return;
+
+    try {
+      const res = await fetch(
+        `/api/productions/${production.id}/characters/${sketchesDialog.id}/sketches/${sketchId}`,
+        { method: "DELETE" }
+      );
+
+      if (!res.ok) throw new Error("Failed to delete sketch");
+
+      // Update local state
+      setCharacters(
+        characters.map((c) =>
+          c.id === sketchesDialog.id
+            ? { ...c, sketches: c.sketches.filter((s) => s.id !== sketchId) }
+            : c
+        )
+      );
+      refreshData();
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: async (acceptedFiles) => {
+      if (acceptedFiles.length > 0) {
+        await handleUploadSketch(acceptedFiles[0]);
+      }
+    },
+    accept: {
+      "image/*": [".png", ".jpg", ".jpeg", ".webp", ".gif"],
+    },
+    maxFiles: 1,
+    disabled: uploadingSketch,
+  });
+
   // Detect quick changes (costume change between consecutive scenes)
   function isQuickChange(characterId: string, sceneIndex: number): boolean {
     if (sceneIndex === 0) return false;
@@ -409,19 +647,40 @@ export function CostumePlot({
               {characters.map((character) => (
                 <tr key={character.id} className="group/row">
                   <td className="sticky left-0 z-10 bg-zinc-900 border-r border-b border-zinc-800 p-3">
-                    <div className="flex items-center justify-between">
-                      <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
                         <div className="font-medium text-zinc-200">{character.name}</div>
                         {character.actorName && (
                           <div className="text-xs text-zinc-500">{character.actorName}</div>
                         )}
                       </div>
-                      <button
-                        onClick={() => handleDeleteCharacter(character.id)}
-                        className="opacity-0 group-hover/row:opacity-100 text-red-400 hover:text-red-300 transition-opacity p-1"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
+                      <div className="flex items-center gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => openMeasurementsDialog(character)}
+                          className="text-zinc-500 hover:text-purple-400 p-1"
+                          title="Actor measurements"
+                        >
+                          <Ruler className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => openSketchesDialog(character)}
+                          className="text-zinc-500 hover:text-purple-400 p-1 relative"
+                          title="Costume sketches"
+                        >
+                          <ImageIcon className="w-3.5 h-3.5" />
+                          {character.sketches.length > 0 && (
+                            <span className="absolute -top-1 -right-1 w-3 h-3 bg-purple-500 rounded-full text-[8px] flex items-center justify-center text-white">
+                              {character.sketches.length}
+                            </span>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCharacter(character.id)}
+                          className="text-red-400 hover:text-red-300 p-1"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
                   </td>
                   {scenes.map((scene, sceneIndex) => {
@@ -746,6 +1005,319 @@ export function CostumePlot({
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
               </Button>
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Measurements Dialog */}
+      <Dialog open={!!measurementsDialog} onOpenChange={() => setMeasurementsDialog(null)}>
+        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-zinc-100 flex items-center gap-2">
+              <Ruler className="w-5 h-5 text-purple-400" />
+              Actor Measurements
+            </DialogTitle>
+            <DialogDescription className="text-zinc-400">
+              {measurementsDialog && (
+                <>
+                  Measurements for{" "}
+                  <span className="text-purple-400">{measurementsDialog.actorName || measurementsDialog.name}</span>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <Tabs defaultValue="body" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 bg-zinc-800">
+              <TabsTrigger value="body">Body</TabsTrigger>
+              <TabsTrigger value="upper">Upper Body</TabsTrigger>
+              <TabsTrigger value="lower">Lower Body</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="body" className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-zinc-300">Height</Label>
+                  <Input
+                    value={measurements.height}
+                    onChange={(e) => setMeasurements({ ...measurements, height: e.target.value })}
+                    placeholder="e.g., 5ft 10in or 178cm"
+                    className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-zinc-300">Weight</Label>
+                  <Input
+                    value={measurements.weight}
+                    onChange={(e) => setMeasurements({ ...measurements, weight: e.target.value })}
+                    placeholder="e.g., 165 lbs or 75kg"
+                    className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-zinc-300">Head Circumference</Label>
+                  <Input
+                    value={measurements.head}
+                    onChange={(e) => setMeasurements({ ...measurements, head: e.target.value })}
+                    placeholder="Above ears/brow"
+                    className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-zinc-300">Shoe Size</Label>
+                  <Input
+                    value={measurements.shoeSize}
+                    onChange={(e) => setMeasurements({ ...measurements, shoeSize: e.target.value })}
+                    placeholder="e.g., 10 or 42 EU"
+                    className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="upper" className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-zinc-300">Collar (Neck)</Label>
+                  <Input
+                    value={measurements.collar}
+                    onChange={(e) => setMeasurements({ ...measurements, collar: e.target.value })}
+                    placeholder="Neck circumference"
+                    className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-zinc-300">Chest</Label>
+                  <Input
+                    value={measurements.chest}
+                    onChange={(e) => setMeasurements({ ...measurements, chest: e.target.value })}
+                    placeholder="At widest part"
+                    className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-zinc-300">Bust</Label>
+                  <Input
+                    value={measurements.bust}
+                    onChange={(e) => setMeasurements({ ...measurements, bust: e.target.value })}
+                    placeholder="At fullest part"
+                    className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-zinc-300">Under Bust</Label>
+                  <Input
+                    value={measurements.underBust}
+                    onChange={(e) => setMeasurements({ ...measurements, underBust: e.target.value })}
+                    placeholder="Directly beneath bust"
+                    className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-zinc-300">Sleeve</Label>
+                  <Input
+                    value={measurements.sleeve}
+                    onChange={(e) => setMeasurements({ ...measurements, sleeve: e.target.value })}
+                    placeholder="Shoulder to wrist"
+                    className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-zinc-300">Waist</Label>
+                  <Input
+                    value={measurements.waist}
+                    onChange={(e) => setMeasurements({ ...measurements, waist: e.target.value })}
+                    placeholder="Natural waistline"
+                    className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="lower" className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-zinc-300">Hip</Label>
+                  <Input
+                    value={measurements.hip}
+                    onChange={(e) => setMeasurements({ ...measurements, hip: e.target.value })}
+                    placeholder="Fullest part"
+                    className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-zinc-300">Inseam</Label>
+                  <Input
+                    value={measurements.inseam}
+                    onChange={(e) => setMeasurements({ ...measurements, inseam: e.target.value })}
+                    placeholder="Inner leg to ankle"
+                    className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-zinc-300">Outseam</Label>
+                  <Input
+                    value={measurements.outseam}
+                    onChange={(e) => setMeasurements({ ...measurements, outseam: e.target.value })}
+                    placeholder="Waist to ankle (outer)"
+                    className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                  />
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setMeasurementsDialog(null)}
+              className="border-zinc-700 text-zinc-300"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveMeasurements}
+              disabled={loading}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Measurements"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sketches Dialog */}
+      <Dialog open={!!sketchesDialog} onOpenChange={() => setSketchesDialog(null)}>
+        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-zinc-100 flex items-center gap-2">
+              <ImageIcon className="w-5 h-5 text-purple-400" />
+              Costume Sketches
+            </DialogTitle>
+            <DialogDescription className="text-zinc-400">
+              {sketchesDialog && (
+                <>
+                  Costume concept sketches for{" "}
+                  <span className="text-purple-400">{sketchesDialog.name}</span>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Upload Zone */}
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-zinc-300 text-sm">Sketch Name (optional)</Label>
+                  <Input
+                    value={sketchName}
+                    onChange={(e) => setSketchName(e.target.value)}
+                    placeholder="e.g., Ball Gown Concept"
+                    className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-zinc-300 text-sm">Description (optional)</Label>
+                  <Input
+                    value={sketchDescription}
+                    onChange={(e) => setSketchDescription(e.target.value)}
+                    placeholder="Designer notes..."
+                    className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                  />
+                </div>
+              </div>
+
+              <div
+                {...getRootProps()}
+                className={`
+                  border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors
+                  ${isDragActive ? "border-purple-500 bg-purple-500/10" : "border-zinc-700 hover:border-zinc-600"}
+                  ${uploadingSketch ? "pointer-events-none opacity-50" : ""}
+                `}
+              >
+                <input {...getInputProps()} />
+                {uploadingSketch ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
+                    <p className="text-sm text-zinc-400">Uploading sketch...</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2">
+                    <Upload className="w-8 h-8 text-zinc-500" />
+                    <p className="text-sm text-zinc-400">
+                      Drop a sketch image here or click to select
+                    </p>
+                    <p className="text-xs text-zinc-500">
+                      PNG, JPG, or WEBP
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Existing Sketches */}
+            {sketchesDialog && sketchesDialog.sketches.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-zinc-300">Uploaded Sketches</h4>
+                <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
+                  {sketchesDialog.sketches.map((sketch) => (
+                    <div
+                      key={sketch.id}
+                      className="relative bg-zinc-800 rounded-lg overflow-hidden border border-zinc-700 group"
+                    >
+                      <div className="relative aspect-3/4">
+                        <Image
+                          src={sketch.url}
+                          alt={sketch.name || "Costume sketch"}
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="icon"
+                            className="h-7 w-7 bg-zinc-900/80 hover:bg-red-900"
+                            onClick={() => handleDeleteSketch(sketch.id)}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      {(sketch.name || sketch.description) && (
+                        <div className="p-2">
+                          {sketch.name && (
+                            <p className="text-sm font-medium text-zinc-200 truncate">{sketch.name}</p>
+                          )}
+                          {sketch.description && (
+                            <p className="text-xs text-zinc-500 truncate">{sketch.description}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {sketchesDialog && sketchesDialog.sketches.length === 0 && (
+              <div className="text-center py-8 text-zinc-500">
+                <ImageIcon className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                <p>No sketches uploaded yet</p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setSketchesDialog(null)}
+              className="border-zinc-700 text-zinc-300"
+            >
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
