@@ -24,6 +24,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
+    const { organizationId, id: userId } = session.user;
+
     const body = await req.json();
     const data = rentalSchema.parse(body);
 
@@ -32,13 +34,13 @@ export async function POST(req: Request) {
       // Create the rental
       const newRental = await tx.rental.create({
         data: {
-          organizationId: session.user.organizationId,
+          organizationId,
           customerId: data.customerId,
           productionId: data.productionId || null,
           dueDate: new Date(data.dueDate),
           depositAmount: data.depositAmount,
           notes: data.notes,
-          createdById: session.user.id,
+          createdById: userId,
           items: {
             create: data.items.map((item) => ({
               costumeItemId: item.costumeItemId,
@@ -87,8 +89,10 @@ export async function GET() {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
+    const { organizationId } = session.user;
+
     const rentals = await db.rental.findMany({
-      where: { organizationId: session.user.organizationId },
+      where: { organizationId },
       include: {
         customer: true,
         production: true,

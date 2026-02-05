@@ -6,16 +6,16 @@ declare module "next-auth" {
     user: {
       id: string;
       role: string;
-      organizationId: string;
-      organizationName: string;
+      organizationId: string | null;  // Null for users who haven't completed onboarding
+      organizationName: string | null;
       isSystemAdmin: boolean;
     } & DefaultSession["user"];
   }
 
   interface User extends DefaultUser {
     role: string;
-    organizationId: string;
-    organizationName: string;
+    organizationId: string | null;
+    organizationName: string | null;
     isSystemAdmin: boolean;
   }
 }
@@ -24,8 +24,8 @@ declare module "next-auth/jwt" {
   interface JWT extends DefaultJWT {
     id: string;
     role: string;
-    organizationId: string;
-    organizationName: string;
+    organizationId: string | null;
+    organizationName: string | null;
     isSystemAdmin: boolean;
   }
 }

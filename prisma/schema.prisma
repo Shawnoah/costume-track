@@ -87,18 +87,41 @@ enum BillingCycle {
 model User {
   id             String   @id @default(cuid())
   email          String   @unique
-  passwordHash   String
+  passwordHash   String?  // Optional for OAuth users
   name           String
+  image          String?  // Profile image from OAuth
   role           UserRole @default(MEMBER)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
-  organizationId String
+  organizationId String?  // Optional until OAuth user completes setup
 
   // Relations
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  rentalsCreated Rental[]   @relation("RentalCreatedBy")
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rentalsCreated Rental[]      @relation("RentalCreatedBy")
+  accounts       Account[]
 
   @@index([organizationId])
+}
+
+// OAuth Account linking (for Google, etc.)
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 enum UserRole {
