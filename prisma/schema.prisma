@@ -1,0 +1,241 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// MULTI-TENANT CORE
+// ============================================
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users       User[]
+  invitations Invitation[]
+  categories  Category[]
+  costumes    CostumeItem[]
+  customers   Customer[]
+  productions Production[]
+  rentals     Rental[]
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  passwordHash   String
+  name           String
+  role           UserRole @default(MEMBER)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  organizationId String
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rentalsCreated Rental[]   @relation("RentalCreatedBy")
+
+  @@index([organizationId])
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model Invitation {
+  id             String           @id @default(cuid())
+  email          String
+  token          String           @unique @default(cuid())
+  role           UserRole         @default(MEMBER)
+  status         InvitationStatus @default(PENDING)
+  expiresAt      DateTime
+  createdAt      DateTime         @default(now())
+  organizationId String
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([token])
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+}
+
+// ============================================
+// INVENTORY
+// ============================================
+
+model Category {
+  id             String   @id @default(cuid())
+  name           String
+  description    String?
+  color          String?  // For UI display
+  createdAt      DateTime @default(now())
+  organizationId String
+
+  // Relations
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  costumes     CostumeItem[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+model CostumeItem {
+  id             String        @id @default(cuid())
+  name           String
+  description    String?
+  sku            String?       // Optional internal tracking code
+  size           String?
+  color          String?
+  era            String?       // e.g., "Victorian", "1920s", "Medieval"
+  condition      ItemCondition @default(GOOD)
+  status         ItemStatus    @default(AVAILABLE)
+  location       String?       // e.g., "Rack A, Section 3"
+  notes          String?
+  purchasePrice  Float?
+  rentalPrice    Float?
+  photos         String[]      // Array of photo URLs
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organizationId String
+  categoryId     String?
+
+  // Relations
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category     Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  rentalItems  RentalItem[]
+
+  @@index([organizationId])
+  @@index([categoryId])
+  @@index([status])
+}
+
+enum ItemCondition {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  NEEDS_REPAIR
+}
+
+enum ItemStatus {
+  AVAILABLE
+  RENTED
+  RESERVED
+  MAINTENANCE
+  RETIRED
+}
+
+// ============================================
+// CUSTOMERS & PRODUCTIONS
+// ============================================
+
+model Customer {
+  id             String   @id @default(cuid())
+  name           String
+  email          String?
+  phone          String?
+  company        String?  // Theater name, production company, etc.
+  address        String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  organizationId String
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rentals      Rental[]
+
+  @@index([organizationId])
+}
+
+model Production {
+  id             String    @id @default(cuid())
+  name           String    // e.g., "Romeo & Juliet"
+  venue          String?
+  director       String?
+  startDate      DateTime?
+  endDate        DateTime?
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  organizationId String
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rentals      Rental[]
+
+  @@index([organizationId])
+}
+
+// ============================================
+// RENTALS
+// ============================================
+
+model Rental {
+  id             String       @id @default(cuid())
+  status         RentalStatus @default(ACTIVE)
+  checkoutDate   DateTime     @default(now())
+  dueDate        DateTime
+  returnDate     DateTime?
+  depositAmount  Float?
+  totalAmount    Float?
+  notes          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organizationId String
+  customerId     String
+  productionId   String?
+  createdById    String
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  production   Production?  @relation(fields: [productionId], references: [id], onDelete: SetNull)
+  createdBy    User         @relation("RentalCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  items        RentalItem[]
+
+  @@index([organizationId])
+  @@index([customerId])
+  @@index([productionId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+enum RentalStatus {
+  ACTIVE
+  RETURNED
+  OVERDUE
+  CANCELLED
+}
+
+model RentalItem {
+  id                  String         @id @default(cuid())
+  conditionOut        ItemCondition  // Condition when checked out
+  conditionIn         ItemCondition? // Condition when returned
+  notesOut            String?
+  notesIn             String?
+  rentalId            String
+  costumeItemId       String
+
+  // Relations
+  rental      Rental      @relation(fields: [rentalId], references: [id], onDelete: Cascade)
+  costumeItem CostumeItem @relation(fields: [costumeItemId], references: [id], onDelete: Restrict)
+
+  @@index([rentalId])
+  @@index([costumeItemId])
+}
