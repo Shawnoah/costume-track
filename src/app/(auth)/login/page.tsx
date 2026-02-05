@@ -4,10 +4,11 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -47,13 +48,20 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center px-4">
       <Card className="w-full max-w-md bg-zinc-900 border-zinc-800">
-        <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold bg-linear-to-r from-purple-500 via-green-400 to-purple-500 bg-clip-text text-transparent">
-            CostumeTrack
-          </CardTitle>
-          <CardDescription className="text-zinc-400">
+        <CardHeader className="text-center space-y-4">
+          <div className="flex justify-center">
+            <Image
+              src="/CostumeTrack combo fullsize.png"
+              alt="CostumeTrack"
+              width={200}
+              height={60}
+              className="h-14 w-auto"
+              priority
+            />
+          </div>
+          <p className="text-zinc-400 text-sm">
             Sign in to your account
-          </CardDescription>
+          </p>
         </CardHeader>
         <form onSubmit={onSubmit}>
           <CardContent className="space-y-4">

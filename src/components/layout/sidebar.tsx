@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -29,11 +30,15 @@ export function Sidebar() {
   return (
     <div className="flex h-full w-64 flex-col bg-zinc-900 border-r border-zinc-800">
       {/* Logo */}
-      <div className="flex h-16 items-center px-6 border-b border-zinc-800">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-linear-to-br from-purple-600 to-green-500 flex items-center justify-center">
-            <Shirt className="w-5 h-5 text-white" />
-          </div>
+      <div className="flex h-16 items-center px-4 border-b border-zinc-800">
+        <Link href="/dashboard" className="flex items-center gap-3">
+          <Image
+            src="/CostumeTrack mark fullsize.png"
+            alt="CostumeTrack"
+            width={36}
+            height={36}
+            className="w-9 h-9"
+          />
           <span className="text-xl font-bold bg-linear-to-r from-purple-400 to-green-400 bg-clip-text text-transparent">
             CostumeTrack
           </span>
