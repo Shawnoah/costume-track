@@ -19,8 +19,9 @@ export interface AIProviderConfig {
   provider: "gemini" | "anthropic" | "openai";
 }
 
-// Default to Gemini Flash for best cost/latency/quality balance for image analysis
-const DEFAULT_PROVIDER: AIProviderConfig["provider"] = "gemini";
+// Default provider for image analysis
+// Options: "gemini" (cheaper, fast), "anthropic" (more accurate)
+const DEFAULT_PROVIDER: AIProviderConfig["provider"] = "anthropic";
 
 // Lazy-loaded Gemini client
 let geminiClient: GoogleGenerativeAI | null = null;
