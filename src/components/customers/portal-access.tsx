@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -28,10 +28,13 @@ export function PortalAccess({
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [origin, setOrigin] = useState("");
 
-  const portalUrl = token
-    ? `${typeof window !== "undefined" ? window.location.origin : ""}/portal?token=${token}`
-    : null;
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+
+  const portalUrl = token && origin ? `${origin}/portal?token=${token}` : null;
 
   const handleToggle = async (newEnabled: boolean) => {
     setLoading(true);

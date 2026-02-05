@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -106,7 +106,11 @@ export function OrganizationProfile({ organization }: OrganizationProfileProps) 
     setLogoUrl(null);
   };
 
-  const publicUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/${organization.slug}`;
+  const [publicUrl, setPublicUrl] = useState(`/${organization.slug}`);
+
+  useEffect(() => {
+    setPublicUrl(`${window.location.origin}/${organization.slug}`);
+  }, [organization.slug]);
 
   return (
     <Card className="bg-zinc-900 border-zinc-800">
