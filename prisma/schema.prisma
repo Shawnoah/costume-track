@@ -18,14 +18,51 @@ model Organization {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Subscription & Billing
+  planTier        PlanTier    @default(CORE)
+  storageSize     StorageSize @default(SMALL)
+  billingCycle    BillingCycle @default(MONTHLY)
+  trialEndsAt     DateTime?   // Null = not on trial
+  subscriptionEndsAt DateTime? // When current period ends
+  stripeCustomerId   String?   @unique
+  stripeSubscriptionId String? @unique
+
+  // AI Credits
+  aiCredits           Int      @default(0)  // Current balance
+  aiCreditsResetAt    DateTime? // When monthly credits reset
+  aiCreditsIncluded   Int      @default(0)  // Monthly included amount
+
+  // Limits (computed from plan, stored for quick access)
+  maxItems    Int @default(500)
+  maxUsers    Int @default(1)
+
   // Relations
-  users       User[]
-  invitations Invitation[]
-  categories  Category[]
-  costumes    CostumeItem[]
-  customers   Customer[]
-  productions Production[]
-  rentals     Rental[]
+  users         User[]
+  invitations   Invitation[]
+  categories    Category[]
+  costumes      CostumeItem[]
+  customers     Customer[]
+  productions   Production[]
+  rentals       Rental[]
+  aiUsageLogs   AIUsageLog[]
+  creditPurchases CreditPurchase[]
+}
+
+enum PlanTier {
+  CORE  // Basic inventory management
+  PRO   // + AI features
+  TEAM  // + Unlimited users, API, etc.
+}
+
+enum StorageSize {
+  SMALL   // 500 items
+  MEDIUM  // 2,000 items
+  LARGE   // 5,000 items
+}
+
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
 }
 
 model User {
@@ -263,4 +300,48 @@ model RentalItem {
 
   @@index([rentalId])
   @@index([costumeItemId])
+}
+
+// ============================================
+// AI & BILLING
+// ============================================
+
+model AIUsageLog {
+  id             String      @id @default(cuid())
+  type           AIUsageType
+  creditsUsed    Int
+  metadata       Json?       // Store query details, results count, etc.
+  createdAt      DateTime    @default(now())
+  organizationId String
+  userId         String?     // Who triggered it
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([createdAt])
+  @@index([type])
+}
+
+enum AIUsageType {
+  PHOTO_SEARCH      // Find costume by image
+  TEXT_SEARCH       // Natural language search
+  GENERATE_DESC     // Auto-generate description
+  AUTO_TAG          // Auto-tag costume
+  BULK_DESCRIBE     // Batch description generation
+}
+
+model CreditPurchase {
+  id             String   @id @default(cuid())
+  credits        Int      // Number of credits purchased
+  amountPaid     Int      // In cents
+  stripePaymentId String? @unique
+  createdAt      DateTime @default(now())
+  organizationId String
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([createdAt])
 }
