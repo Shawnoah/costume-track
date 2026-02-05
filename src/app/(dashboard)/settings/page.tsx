@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { RentalAgreementEditor } from "@/components/settings/rental-agreement-editor";
 import { OrganizationProfile } from "@/components/settings/organization-profile";
 import { CategoryManager } from "@/components/settings/category-manager";
+import { LabelFormatManager } from "@/components/settings/label-format-manager";
 import { BillingManager } from "@/components/settings/billing-manager";
 
 export default async function SettingsPage() {
@@ -138,6 +139,9 @@ export default async function SettingsPage() {
             </Card>
           )}
         </div>
+
+        {/* Label Formats - Admin only */}
+        {isAdmin && <LabelFormatManager />}
 
         {/* Rental Agreement - Admin only */}
         {isAdmin && (

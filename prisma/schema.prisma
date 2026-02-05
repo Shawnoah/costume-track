@@ -50,6 +50,9 @@ model Organization {
   // Rental Agreement
   rentalAgreementText String?  // Custom agreement text (markdown supported)
 
+  // Label Printing
+  selectedLabelFormatId String?
+
   // Relations
   users         User[]
   invitations   Invitation[]
@@ -60,6 +63,8 @@ model Organization {
   rentals       Rental[]
   aiUsageLogs   AIUsageLog[]
   creditPurchases CreditPurchase[]
+  customLabelFormats LabelFormat[] @relation("CustomLabelFormats")
+  selectedLabelFormat LabelFormat? @relation("SelectedLabelFormat", fields: [selectedLabelFormatId], references: [id], onDelete: SetNull)
 }
 
 enum PlanTier {
@@ -368,4 +373,26 @@ model CreditPurchase {
 
   @@index([organizationId])
   @@index([createdAt])
+}
+
+// ============================================
+// INVENTORY TAGGING
+// ============================================
+
+model LabelFormat {
+  id             String   @id @default(cuid())
+  name           String   // e.g., "Standard Tag 2.25x1.37", "Small Label 1x0.5"
+  widthInches    Float    // Width in inches
+  heightInches   Float    // Height in inches
+  isPreset       Boolean  @default(false) // System presets vs custom
+  description    String?  // e.g., "Direct thermal tag with pre-punched hole"
+  createdAt      DateTime @default(now())
+  organizationId String?  // Null for system presets
+
+  // Relations
+  organization   Organization? @relation("CustomLabelFormats", fields: [organizationId], references: [id], onDelete: Cascade)
+  organizations  Organization[] @relation("SelectedLabelFormat")
+
+  @@index([organizationId])
+  @@index([isPreset])
 }

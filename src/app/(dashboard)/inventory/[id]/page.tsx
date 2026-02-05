@@ -20,6 +20,7 @@ import {
   Info,
 } from "lucide-react";
 import { format } from "date-fns";
+import { TagPrint } from "@/components/inventory/tag-print";
 
 const statusColors: Record<string, string> = {
   AVAILABLE: "bg-green-600/20 text-green-400 border-green-600/30",
@@ -111,12 +112,24 @@ export default async function CostumeDetailPage({
             </Badge>
           </div>
         </div>
-        <Button asChild className="bg-purple-600 hover:bg-purple-700">
-          <Link href={`/inventory/${costume.id}/edit`}>
-            <Pencil className="w-4 h-4 mr-2" />
-            Edit
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <TagPrint
+            item={{
+              id: costume.id,
+              name: costume.name,
+              sku: costume.sku,
+              organizationId: session.user.organizationId,
+              category: costume.category,
+              location: costume.location,
+            }}
+          />
+          <Button asChild className="bg-purple-600 hover:bg-purple-700">
+            <Link href={`/inventory/${costume.id}/edit`}>
+              <Pencil className="w-4 h-4 mr-2" />
+              Edit
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
