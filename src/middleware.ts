@@ -1,8 +1,10 @@
 import NextAuth from "next-auth";
 import { authConfig } from "@/lib/auth.config";
 
-// Use auth config without Prisma for Edge middleware
-export const { auth: middleware } = NextAuth(authConfig);
+const { auth } = NextAuth(authConfig);
+
+// Export as middleware function for Next.js
+export const middleware = auth;
 
 export const config = {
   matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
