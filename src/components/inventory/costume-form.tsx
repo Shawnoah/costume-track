@@ -15,10 +15,19 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
+import { PhotoUpload, type Photo } from "./photo-upload";
 
 interface Category {
   id: string;
   name: string;
+}
+
+interface CostumePhoto {
+  id: string;
+  url: string;
+  key: string;
+  description: string | null;
+  sortOrder: number;
 }
 
 interface CostumeData {
@@ -36,6 +45,7 @@ interface CostumeData {
   purchasePrice: number | null;
   rentalPrice: number | null;
   categoryId: string | null;
+  photos?: CostumePhoto[];
 }
 
 interface CostumeFormProps {
@@ -47,6 +57,15 @@ export function CostumeForm({ categories, costume }: CostumeFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<Photo[]>(
+    costume?.photos?.map((p) => ({
+      id: p.id,
+      url: p.url,
+      key: p.key,
+      description: p.description || "",
+      sortOrder: p.sortOrder,
+    })) || []
+  );
 
   const isEditing = !!costume?.id;
 
@@ -70,6 +89,13 @@ export function CostumeForm({ categories, costume }: CostumeFormProps) {
       purchasePrice: formData.get("purchasePrice") ? parseFloat(formData.get("purchasePrice") as string) : null,
       rentalPrice: formData.get("rentalPrice") ? parseFloat(formData.get("rentalPrice") as string) : null,
       categoryId: formData.get("categoryId") as string || null,
+      photos: photos.map((p) => ({
+        id: p.id,
+        url: p.url,
+        key: p.key,
+        description: p.description || null,
+        sortOrder: p.sortOrder,
+      })),
     };
 
     try {
@@ -152,7 +178,7 @@ export function CostumeForm({ categories, costume }: CostumeFormProps) {
                   <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-100">
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
-                  <SelectContent className="bg-zinc-900 border-zinc-800">
+                  <SelectContent>
                     {categories.map((cat) => (
                       <SelectItem key={cat.id} value={cat.id}>
                         {cat.name}
@@ -223,7 +249,7 @@ export function CostumeForm({ categories, costume }: CostumeFormProps) {
                   <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-100">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-zinc-900 border-zinc-800">
+                  <SelectContent>
                     <SelectItem value="EXCELLENT">Excellent</SelectItem>
                     <SelectItem value="GOOD">Good</SelectItem>
                     <SelectItem value="FAIR">Fair</SelectItem>
@@ -238,7 +264,7 @@ export function CostumeForm({ categories, costume }: CostumeFormProps) {
                   <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-100">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-zinc-900 border-zinc-800">
+                  <SelectContent>
                     <SelectItem value="AVAILABLE">Available</SelectItem>
                     <SelectItem value="RENTED">Rented</SelectItem>
                     <SelectItem value="RESERVED">Reserved</SelectItem>
@@ -248,6 +274,20 @@ export function CostumeForm({ categories, costume }: CostumeFormProps) {
                 </Select>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Photos - Full Width */}
+        <Card className="bg-zinc-900 border-zinc-800 lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-zinc-100">Photos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PhotoUpload
+              photos={photos}
+              onChange={setPhotos}
+              costumeId={costume?.id}
+            />
           </CardContent>
         </Card>
 

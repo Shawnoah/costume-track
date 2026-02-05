@@ -25,6 +25,7 @@ export default function RegisterPage() {
       email: formData.get("email") as string,
       password: formData.get("password") as string,
       organizationName: formData.get("organizationName") as string,
+      inviteCode: formData.get("inviteCode") as string,
     };
 
     try {
@@ -119,6 +120,18 @@ export default function RegisterPage() {
                 className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 focus:border-purple-500 focus:ring-purple-500"
               />
               <p className="text-xs text-zinc-500">Minimum 8 characters</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="inviteCode" className="text-zinc-300">Invite Code</Label>
+              <Input
+                id="inviteCode"
+                name="inviteCode"
+                type="text"
+                placeholder="Enter invite code"
+                required
+                className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 focus:border-purple-500 focus:ring-purple-500"
+              />
+              <p className="text-xs text-zinc-500">Required to create an account</p>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">

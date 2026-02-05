@@ -3,6 +3,14 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
+const photoSchema = z.object({
+  id: z.string().optional(),
+  url: z.string(),
+  key: z.string(),
+  description: z.string().nullable().optional(),
+  sortOrder: z.number(),
+});
+
 const costumeSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().nullable().optional(),
@@ -17,6 +25,7 @@ const costumeSchema = z.object({
   purchasePrice: z.number().nullable().optional(),
   rentalPrice: z.number().nullable().optional(),
   categoryId: z.string().nullable().optional(),
+  photos: z.array(photoSchema).optional(),
 });
 
 export async function POST(req: Request) {
@@ -27,13 +36,22 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const data = costumeSchema.parse(body);
+    const { photos, ...data } = costumeSchema.parse(body);
 
     const costume = await db.costumeItem.create({
       data: {
         ...data,
         organizationId: session.user.organizationId,
+        photos: photos && photos.length > 0 ? {
+          create: photos.map((p) => ({
+            url: p.url,
+            key: p.key,
+            description: p.description,
+            sortOrder: p.sortOrder,
+          })),
+        } : undefined,
       },
+      include: { photos: { orderBy: { sortOrder: "asc" } } },
     });
 
     return NextResponse.json(costume, { status: 201 });
@@ -62,7 +80,10 @@ export async function GET() {
 
     const costumes = await db.costumeItem.findMany({
       where: { organizationId: session.user.organizationId },
-      include: { category: true },
+      include: {
+        category: true,
+        photos: { orderBy: { sortOrder: "asc" } },
+      },
       orderBy: { updatedAt: "desc" },
     });
 

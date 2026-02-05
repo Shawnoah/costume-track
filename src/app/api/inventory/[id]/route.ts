@@ -3,6 +3,14 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
+const photoSchema = z.object({
+  id: z.string().optional(),
+  url: z.string(),
+  key: z.string(),
+  description: z.string().nullable().optional(),
+  sortOrder: z.number(),
+});
+
 const costumeSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().nullable().optional(),
@@ -17,6 +25,7 @@ const costumeSchema = z.object({
   purchasePrice: z.number().nullable().optional(),
   rentalPrice: z.number().nullable().optional(),
   categoryId: z.string().nullable().optional(),
+  photos: z.array(photoSchema).optional(),
 });
 
 export async function GET(
@@ -36,7 +45,10 @@ export async function GET(
         id,
         organizationId: session.user.organizationId,
       },
-      include: { category: true },
+      include: {
+        category: true,
+        photos: { orderBy: { sortOrder: "asc" } },
+      },
     });
 
     if (!costume) {
@@ -65,7 +77,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await req.json();
-    const data = costumeSchema.parse(body);
+    const { photos, ...data } = costumeSchema.parse(body);
 
     // Verify ownership
     const existing = await db.costumeItem.findFirst({
@@ -73,15 +85,60 @@ export async function PUT(
         id,
         organizationId: session.user.organizationId,
       },
+      include: { photos: true },
     });
 
     if (!existing) {
       return NextResponse.json({ message: "Not found" }, { status: 404 });
     }
 
-    const costume = await db.costumeItem.update({
-      where: { id },
-      data,
+    // Handle photos: delete removed, update existing, create new
+    const existingPhotoIds = existing.photos.map((p) => p.id);
+    const newPhotoIds = photos?.filter((p) => p.id).map((p) => p.id!) || [];
+    const photosToDelete = existingPhotoIds.filter((id) => !newPhotoIds.includes(id));
+
+    // Use transaction to update costume and photos
+    const costume = await db.$transaction(async (tx) => {
+      // Delete removed photos
+      if (photosToDelete.length > 0) {
+        await tx.costumePhoto.deleteMany({
+          where: { id: { in: photosToDelete } },
+        });
+      }
+
+      // Update or create photos
+      if (photos && photos.length > 0) {
+        for (const photo of photos) {
+          if (photo.id) {
+            // Update existing
+            await tx.costumePhoto.update({
+              where: { id: photo.id },
+              data: {
+                description: photo.description,
+                sortOrder: photo.sortOrder,
+              },
+            });
+          } else {
+            // Create new
+            await tx.costumePhoto.create({
+              data: {
+                url: photo.url,
+                key: photo.key,
+                description: photo.description,
+                sortOrder: photo.sortOrder,
+                costumeItemId: id,
+              },
+            });
+          }
+        }
+      }
+
+      // Update costume
+      return tx.costumeItem.update({
+        where: { id },
+        data,
+        include: { photos: { orderBy: { sortOrder: "asc" } } },
+      });
     });
 
     return NextResponse.json(costume);

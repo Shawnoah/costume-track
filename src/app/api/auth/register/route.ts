@@ -3,11 +3,14 @@ import { hash } from "bcryptjs";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
+const INVITE_CODE = "02052026";
+
 const registerSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   organizationName: z.string().min(1, "Organization name is required"),
+  inviteCode: z.string().min(1, "Invite code is required"),
 });
 
 function slugify(text: string): string {
@@ -23,6 +26,14 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const validatedData = registerSchema.parse(body);
+
+    // Verify invite code
+    if (validatedData.inviteCode !== INVITE_CODE) {
+      return NextResponse.json(
+        { message: "Invalid invite code" },
+        { status: 400 }
+      );
+    }
 
     // Check if user already exists
     const existingUser = await db.user.findUnique({

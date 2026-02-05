@@ -108,20 +108,35 @@ model CostumeItem {
   notes          String?
   purchasePrice  Float?
   rentalPrice    Float?
-  photos         String[]      // Array of photo URLs
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   organizationId String
   categoryId     String?
 
   // Relations
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  category     Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category     Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   rentalItems  RentalItem[]
+  photos       CostumePhoto[]
 
   @@index([organizationId])
   @@index([categoryId])
   @@index([status])
+}
+
+model CostumePhoto {
+  id            String   @id @default(cuid())
+  url           String
+  key           String   // Uploadthing file key for deletion
+  description   String?
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  costumeItemId String
+
+  // Relations
+  costumeItem CostumeItem @relation(fields: [costumeItemId], references: [id], onDelete: Cascade)
+
+  @@index([costumeItemId])
 }
 
 enum ItemCondition {
