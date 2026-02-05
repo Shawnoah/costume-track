@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { parsePaginationParams, createPaginatedResponse } from "@/lib/pagination";
 
 const rentalSchema = z.object({
   customerId: z.string().min(1, "Customer is required"),
@@ -82,7 +83,7 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const session = await auth();
     if (!session?.user?.organizationId) {
@@ -90,18 +91,33 @@ export async function GET() {
     }
 
     const { organizationId } = session.user;
+    const url = new URL(req.url);
+    const pagination = parsePaginationParams(url);
+    const status = url.searchParams.get("status") || "";
+    const customerId = url.searchParams.get("customerId") || "";
 
-    const rentals = await db.rental.findMany({
-      where: { organizationId },
-      include: {
-        customer: true,
-        production: true,
-        items: { include: { costumeItem: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const where = {
+      organizationId,
+      ...(status && { status: status as "ACTIVE" | "RETURNED" | "OVERDUE" | "CANCELLED" }),
+      ...(customerId && { customerId }),
+    };
 
-    return NextResponse.json(rentals);
+    const [rentals, total] = await Promise.all([
+      db.rental.findMany({
+        where,
+        include: {
+          customer: true,
+          production: true,
+          items: { include: { costumeItem: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        skip: pagination.skip,
+        take: pagination.take,
+      }),
+      db.rental.count({ where }),
+    ]);
+
+    return NextResponse.json(createPaginatedResponse(rentals, total, pagination));
   } catch (error) {
     console.error("Get rentals error:", error);
     return NextResponse.json(

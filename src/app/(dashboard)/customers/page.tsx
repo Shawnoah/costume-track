@@ -12,9 +12,12 @@ import {
 } from "@/components/ui/table";
 import { Plus, Search, Users } from "lucide-react";
 import Link from "next/link";
+import { Pagination } from "@/components/ui/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 
 interface SearchParams {
   search?: string;
+  page?: string;
 }
 
 export default async function CustomersPage({
@@ -29,25 +32,36 @@ export default async function CustomersPage({
 
   const params = await searchParams;
   const search = params.search || "";
+  const page = Math.max(1, parseInt(params.page || "1"));
+  const pageSize = DEFAULT_PAGE_SIZE;
 
-  const customers = await db.customer.findMany({
-    where: {
-      organizationId: session.user.organizationId,
-      ...(search && {
-        OR: [
-          { name: { contains: search, mode: "insensitive" } },
-          { email: { contains: search, mode: "insensitive" } },
-          { company: { contains: search, mode: "insensitive" } },
-        ],
-      }),
-    },
-    include: {
-      rentals: {
-        where: { status: "ACTIVE" },
+  const where = {
+    organizationId: session.user.organizationId,
+    ...(search && {
+      OR: [
+        { name: { contains: search, mode: "insensitive" as const } },
+        { email: { contains: search, mode: "insensitive" as const } },
+        { company: { contains: search, mode: "insensitive" as const } },
+      ],
+    }),
+  };
+
+  const [customers, total] = await Promise.all([
+    db.customer.findMany({
+      where,
+      include: {
+        rentals: {
+          where: { status: "ACTIVE" },
+        },
       },
-    },
-    orderBy: { name: "asc" },
-  });
+      orderBy: { name: "asc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    db.customer.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(total / pageSize);
 
   return (
     <div className="space-y-6">
@@ -93,49 +107,59 @@ export default async function CustomersPage({
           )}
         </div>
       ) : (
-        <div className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-zinc-800 hover:bg-transparent">
-                <TableHead className="text-zinc-400">Name</TableHead>
-                <TableHead className="text-zinc-400">Email</TableHead>
-                <TableHead className="text-zinc-400">Phone</TableHead>
-                <TableHead className="text-zinc-400">Company</TableHead>
-                <TableHead className="text-zinc-400">Active Rentals</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {customers.map((customer) => (
-                <TableRow
-                  key={customer.id}
-                  className="border-zinc-800 hover:bg-zinc-800/50 cursor-pointer"
-                >
-                  <TableCell>
-                    <Link href={`/customers/${customer.id}`} className="font-medium text-zinc-200">
-                      {customer.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-zinc-400">
-                    {customer.email || "—"}
-                  </TableCell>
-                  <TableCell className="text-zinc-400">
-                    {customer.phone || "—"}
-                  </TableCell>
-                  <TableCell className="text-zinc-400">
-                    {customer.company || "—"}
-                  </TableCell>
-                  <TableCell>
-                    {customer.rentals.length > 0 ? (
-                      <span className="text-green-400">{customer.rentals.length}</span>
-                    ) : (
-                      <span className="text-zinc-500">0</span>
-                    )}
-                  </TableCell>
+        <>
+          <div className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-zinc-800 hover:bg-transparent">
+                  <TableHead className="text-zinc-400">Name</TableHead>
+                  <TableHead className="text-zinc-400">Email</TableHead>
+                  <TableHead className="text-zinc-400">Phone</TableHead>
+                  <TableHead className="text-zinc-400">Company</TableHead>
+                  <TableHead className="text-zinc-400">Active Rentals</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {customers.map((customer) => (
+                  <TableRow
+                    key={customer.id}
+                    className="border-zinc-800 hover:bg-zinc-800/50 cursor-pointer"
+                  >
+                    <TableCell>
+                      <Link href={`/customers/${customer.id}`} className="font-medium text-zinc-200">
+                        {customer.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-zinc-400">
+                      {customer.email || "—"}
+                    </TableCell>
+                    <TableCell className="text-zinc-400">
+                      {customer.phone || "—"}
+                    </TableCell>
+                    <TableCell className="text-zinc-400">
+                      {customer.company || "—"}
+                    </TableCell>
+                    <TableCell>
+                      {customer.rentals.length > 0 ? (
+                        <span className="text-green-400">{customer.rentals.length}</span>
+                      ) : (
+                        <span className="text-zinc-500">0</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Pagination */}
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={pageSize}
+          />
+        </>
       )}
     </div>
   );

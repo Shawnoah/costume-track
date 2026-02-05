@@ -13,9 +13,12 @@ import {
 import { Plus, Search, Theater } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
+import { Pagination } from "@/components/ui/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 
 interface SearchParams {
   search?: string;
+  page?: string;
 }
 
 export default async function ProductionsPage({
@@ -30,24 +33,35 @@ export default async function ProductionsPage({
 
   const params = await searchParams;
   const search = params.search || "";
+  const page = Math.max(1, parseInt(params.page || "1"));
+  const pageSize = DEFAULT_PAGE_SIZE;
 
-  const productions = await db.production.findMany({
-    where: {
-      organizationId: session.user.organizationId,
-      ...(search && {
-        OR: [
-          { name: { contains: search, mode: "insensitive" } },
-          { venue: { contains: search, mode: "insensitive" } },
-        ],
-      }),
-    },
-    include: {
-      rentals: {
-        where: { status: "ACTIVE" },
+  const where = {
+    organizationId: session.user.organizationId,
+    ...(search && {
+      OR: [
+        { name: { contains: search, mode: "insensitive" as const } },
+        { venue: { contains: search, mode: "insensitive" as const } },
+      ],
+    }),
+  };
+
+  const [productions, total] = await Promise.all([
+    db.production.findMany({
+      where,
+      include: {
+        rentals: {
+          where: { status: "ACTIVE" },
+        },
       },
-    },
-    orderBy: { startDate: "desc" },
-  });
+      orderBy: { startDate: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    db.production.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(total / pageSize);
 
   return (
     <div className="space-y-6">
@@ -93,54 +107,64 @@ export default async function ProductionsPage({
           )}
         </div>
       ) : (
-        <div className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-zinc-800 hover:bg-transparent">
-                <TableHead className="text-zinc-400">Name</TableHead>
-                <TableHead className="text-zinc-400">Venue</TableHead>
-                <TableHead className="text-zinc-400">Director</TableHead>
-                <TableHead className="text-zinc-400">Dates</TableHead>
-                <TableHead className="text-zinc-400">Active Rentals</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {productions.map((production) => (
-                <TableRow
-                  key={production.id}
-                  className="border-zinc-800 hover:bg-zinc-800/50 cursor-pointer"
-                >
-                  <TableCell>
-                    <Link href={`/productions/${production.id}`} className="font-medium text-zinc-200">
-                      {production.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-zinc-400">
-                    {production.venue || "—"}
-                  </TableCell>
-                  <TableCell className="text-zinc-400">
-                    {production.director || "—"}
-                  </TableCell>
-                  <TableCell className="text-zinc-400">
-                    {production.startDate
-                      ? format(new Date(production.startDate), "MMM d")
-                      : "—"}
-                    {production.endDate && (
-                      <> - {format(new Date(production.endDate), "MMM d, yyyy")}</>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {production.rentals.length > 0 ? (
-                      <span className="text-green-400">{production.rentals.length}</span>
-                    ) : (
-                      <span className="text-zinc-500">0</span>
-                    )}
-                  </TableCell>
+        <>
+          <div className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-zinc-800 hover:bg-transparent">
+                  <TableHead className="text-zinc-400">Name</TableHead>
+                  <TableHead className="text-zinc-400">Venue</TableHead>
+                  <TableHead className="text-zinc-400">Director</TableHead>
+                  <TableHead className="text-zinc-400">Dates</TableHead>
+                  <TableHead className="text-zinc-400">Active Rentals</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {productions.map((production) => (
+                  <TableRow
+                    key={production.id}
+                    className="border-zinc-800 hover:bg-zinc-800/50 cursor-pointer"
+                  >
+                    <TableCell>
+                      <Link href={`/productions/${production.id}`} className="font-medium text-zinc-200">
+                        {production.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-zinc-400">
+                      {production.venue || "—"}
+                    </TableCell>
+                    <TableCell className="text-zinc-400">
+                      {production.director || "—"}
+                    </TableCell>
+                    <TableCell className="text-zinc-400">
+                      {production.startDate
+                        ? format(new Date(production.startDate), "MMM d")
+                        : "—"}
+                      {production.endDate && (
+                        <> - {format(new Date(production.endDate), "MMM d, yyyy")}</>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {production.rentals.length > 0 ? (
+                        <span className="text-green-400">{production.rentals.length}</span>
+                      ) : (
+                        <span className="text-zinc-500">0</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Pagination */}
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={pageSize}
+          />
+        </>
       )}
     </div>
   );

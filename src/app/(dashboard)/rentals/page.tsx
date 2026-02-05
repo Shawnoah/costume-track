@@ -20,6 +20,8 @@ import {
 import { Plus, ClipboardList } from "lucide-react";
 import Link from "next/link";
 import { format, differenceInDays } from "date-fns";
+import { Pagination } from "@/components/ui/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 
 const statusColors: Record<string, string> = {
   ACTIVE: "bg-green-600/20 text-green-400 border-green-600/30",
@@ -30,6 +32,7 @@ const statusColors: Record<string, string> = {
 
 interface SearchParams {
   status?: string;
+  page?: string;
 }
 
 export default async function RentalsPage({
@@ -44,21 +47,32 @@ export default async function RentalsPage({
 
   const params = await searchParams;
   const statusFilter = params.status || "";
+  const page = Math.max(1, parseInt(params.page || "1"));
+  const pageSize = DEFAULT_PAGE_SIZE;
 
-  const rentals = await db.rental.findMany({
-    where: {
-      organizationId: session.user.organizationId,
-      ...(statusFilter && statusFilter !== "all" && { status: statusFilter as any }),
-    },
-    include: {
-      customer: true,
-      production: true,
-      items: {
-        include: { costumeItem: true },
+  const where = {
+    organizationId: session.user.organizationId,
+    ...(statusFilter && statusFilter !== "all" && { status: statusFilter as "ACTIVE" | "RETURNED" | "OVERDUE" | "CANCELLED" }),
+  };
+
+  const [rentals, total] = await Promise.all([
+    db.rental.findMany({
+      where,
+      include: {
+        customer: true,
+        production: true,
+        items: {
+          include: { costumeItem: true },
+        },
       },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    db.rental.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(total / pageSize);
 
   // Check for overdue rentals
   const now = new Date();
@@ -113,59 +127,69 @@ export default async function RentalsPage({
           </Button>
         </div>
       ) : (
-        <div className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-zinc-800 hover:bg-transparent">
-                <TableHead className="text-zinc-400">Customer</TableHead>
-                <TableHead className="text-zinc-400">Production</TableHead>
-                <TableHead className="text-zinc-400">Items</TableHead>
-                <TableHead className="text-zinc-400">Checkout</TableHead>
-                <TableHead className="text-zinc-400">Due Date</TableHead>
-                <TableHead className="text-zinc-400">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rentalsWithStatus.map((rental) => (
-                <TableRow
-                  key={rental.id}
-                  className="border-zinc-800 hover:bg-zinc-800/50 cursor-pointer"
-                >
-                  <TableCell>
-                    <Link href={`/rentals/${rental.id}`} className="font-medium text-zinc-200">
-                      {rental.customer.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-zinc-400">
-                    {rental.production?.name || "—"}
-                  </TableCell>
-                  <TableCell className="text-zinc-400">
-                    {rental.items.length} item{rental.items.length !== 1 ? "s" : ""}
-                  </TableCell>
-                  <TableCell className="text-zinc-400">
-                    {format(new Date(rental.checkoutDate), "MMM d, yyyy")}
-                  </TableCell>
-                  <TableCell className="text-zinc-400">
-                    {format(new Date(rental.dueDate), "MMM d, yyyy")}
-                    {rental.daysOverdue > 0 && (
-                      <span className="text-red-400 text-xs ml-2">
-                        ({rental.daysOverdue}d overdue)
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={statusColors[rental.displayStatus]}
-                    >
-                      {rental.displayStatus.toLowerCase()}
-                    </Badge>
-                  </TableCell>
+        <>
+          <div className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-zinc-800 hover:bg-transparent">
+                  <TableHead className="text-zinc-400">Customer</TableHead>
+                  <TableHead className="text-zinc-400">Production</TableHead>
+                  <TableHead className="text-zinc-400">Items</TableHead>
+                  <TableHead className="text-zinc-400">Checkout</TableHead>
+                  <TableHead className="text-zinc-400">Due Date</TableHead>
+                  <TableHead className="text-zinc-400">Status</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {rentalsWithStatus.map((rental) => (
+                  <TableRow
+                    key={rental.id}
+                    className="border-zinc-800 hover:bg-zinc-800/50 cursor-pointer"
+                  >
+                    <TableCell>
+                      <Link href={`/rentals/${rental.id}`} className="font-medium text-zinc-200">
+                        {rental.customer.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-zinc-400">
+                      {rental.production?.name || "—"}
+                    </TableCell>
+                    <TableCell className="text-zinc-400">
+                      {rental.items.length} item{rental.items.length !== 1 ? "s" : ""}
+                    </TableCell>
+                    <TableCell className="text-zinc-400">
+                      {format(new Date(rental.checkoutDate), "MMM d, yyyy")}
+                    </TableCell>
+                    <TableCell className="text-zinc-400">
+                      {format(new Date(rental.dueDate), "MMM d, yyyy")}
+                      {rental.daysOverdue > 0 && (
+                        <span className="text-red-400 text-xs ml-2">
+                          ({rental.daysOverdue}d overdue)
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={statusColors[rental.displayStatus]}
+                      >
+                        {rental.displayStatus.toLowerCase()}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Pagination */}
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={pageSize}
+          />
+        </>
       )}
     </div>
   );

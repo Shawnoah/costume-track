@@ -3,8 +3,6 @@ import { hash } from "bcryptjs";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
-const INVITE_CODE = "02052026";
-
 const registerSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email address"),
@@ -27,10 +25,30 @@ export async function POST(req: Request) {
     const body = await req.json();
     const validatedData = registerSchema.parse(body);
 
-    // Verify invite code
-    if (validatedData.inviteCode !== INVITE_CODE) {
+    // Verify invite code from database
+    const inviteCode = await db.systemInviteCode.findUnique({
+      where: { code: validatedData.inviteCode },
+    });
+
+    if (!inviteCode || !inviteCode.isActive) {
       return NextResponse.json(
         { message: "Invalid invite code" },
+        { status: 400 }
+      );
+    }
+
+    // Check if code is expired
+    if (inviteCode.expiresAt && inviteCode.expiresAt < new Date()) {
+      return NextResponse.json(
+        { message: "This invite code has expired" },
+        { status: 400 }
+      );
+    }
+
+    // Check if code has reached max uses
+    if (inviteCode.maxUses !== null && inviteCode.usedCount >= inviteCode.maxUses) {
+      return NextResponse.json(
+        { message: "This invite code has reached its usage limit" },
         { status: 400 }
       );
     }
@@ -89,6 +107,12 @@ export async function POST(req: Request) {
           { name: "Headwear", organizationId: organization.id, color: "#ec4899" },
           { name: "Outerwear", organizationId: organization.id, color: "#f97316" },
         ],
+      });
+
+      // Increment invite code usage
+      await tx.systemInviteCode.update({
+        where: { id: inviteCode.id },
+        data: { usedCount: { increment: 1 } },
       });
 
       return { organization, user };

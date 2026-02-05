@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { parsePaginationParams, createPaginatedResponse } from "@/lib/pagination";
 
 const photoSchema = z.object({
   id: z.string().optional(),
@@ -73,23 +74,49 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const session = await auth();
     if (!session?.user?.organizationId) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const costumes = await db.costumeItem.findMany({
-      where: { organizationId: session.user.organizationId },
-      include: {
-        category: true,
-        photos: { orderBy: [{ type: "asc" }, { sortOrder: "asc" }] },
-      },
-      orderBy: { updatedAt: "desc" },
-    });
+    const url = new URL(req.url);
+    const pagination = parsePaginationParams(url);
 
-    return NextResponse.json(costumes);
+    // Parse filter params
+    const search = url.searchParams.get("search") || "";
+    const status = url.searchParams.get("status") || "";
+    const categoryId = url.searchParams.get("categoryId") || "";
+
+    const where = {
+      organizationId: session.user.organizationId,
+      ...(search && {
+        OR: [
+          { name: { contains: search, mode: "insensitive" as const } },
+          { sku: { contains: search, mode: "insensitive" as const } },
+          { description: { contains: search, mode: "insensitive" as const } },
+        ],
+      }),
+      ...(status && { status: status as "AVAILABLE" | "RENTED" | "RESERVED" | "MAINTENANCE" | "RETIRED" }),
+      ...(categoryId && { categoryId }),
+    };
+
+    const [costumes, total] = await Promise.all([
+      db.costumeItem.findMany({
+        where,
+        include: {
+          category: true,
+          photos: { orderBy: [{ type: "asc" }, { sortOrder: "asc" }] },
+        },
+        orderBy: { updatedAt: "desc" },
+        skip: pagination.skip,
+        take: pagination.take,
+      }),
+      db.costumeItem.count({ where }),
+    ]);
+
+    return NextResponse.json(createPaginatedResponse(costumes, total, pagination));
   } catch (error) {
     console.error("Get costumes error:", error);
     return NextResponse.json(

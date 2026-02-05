@@ -15,6 +15,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { InventoryActions } from "@/components/inventory/inventory-actions";
 import { InventoryFilters } from "@/components/inventory/inventory-filters";
+import { Pagination } from "@/components/ui/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 
 const statusColors: Record<string, string> = {
   AVAILABLE: "bg-green-600/20 text-green-400 border-green-600/30",
@@ -36,6 +38,7 @@ interface SearchParams {
   search?: string;
   status?: string;
   category?: string;
+  page?: string;
 }
 
 export default async function InventoryPage({
@@ -52,25 +55,29 @@ export default async function InventoryPage({
   const search = params.search || "";
   const statusFilter = params.status || "";
   const categoryFilter = params.category || "";
+  const page = Math.max(1, parseInt(params.page || "1"));
+  const pageSize = DEFAULT_PAGE_SIZE;
 
-  const [costumes, categories] = await Promise.all([
+  const where = {
+    organizationId: session.user.organizationId,
+    ...(search && {
+      OR: [
+        { name: { contains: search, mode: "insensitive" as const } },
+        { description: { contains: search, mode: "insensitive" as const } },
+        { sku: { contains: search, mode: "insensitive" as const } },
+        { color: { contains: search, mode: "insensitive" as const } },
+        { era: { contains: search, mode: "insensitive" as const } },
+        { location: { contains: search, mode: "insensitive" as const } },
+        { notes: { contains: search, mode: "insensitive" as const } },
+      ],
+    }),
+    ...(statusFilter && statusFilter !== "all" && { status: statusFilter as "AVAILABLE" | "RENTED" | "RESERVED" | "MAINTENANCE" | "RETIRED" }),
+    ...(categoryFilter && categoryFilter !== "all" && { categoryId: categoryFilter }),
+  };
+
+  const [costumes, total, categories] = await Promise.all([
     db.costumeItem.findMany({
-      where: {
-        organizationId: session.user.organizationId,
-        ...(search && {
-          OR: [
-            { name: { contains: search, mode: "insensitive" } },
-            { description: { contains: search, mode: "insensitive" } },
-            { sku: { contains: search, mode: "insensitive" } },
-            { color: { contains: search, mode: "insensitive" } },
-            { era: { contains: search, mode: "insensitive" } },
-            { location: { contains: search, mode: "insensitive" } },
-            { notes: { contains: search, mode: "insensitive" } },
-          ],
-        }),
-        ...(statusFilter && statusFilter !== "all" && { status: statusFilter as any }),
-        ...(categoryFilter && categoryFilter !== "all" && { categoryId: categoryFilter }),
-      },
+      where,
       include: {
         category: true,
         photos: {
@@ -79,12 +86,17 @@ export default async function InventoryPage({
         },
       },
       orderBy: { updatedAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     }),
+    db.costumeItem.count({ where }),
     db.category.findMany({
       where: { organizationId: session.user.organizationId },
       orderBy: { name: "asc" },
     }),
   ]);
+
+  const totalPages = Math.ceil(total / pageSize);
 
   return (
     <div className="space-y-4 lg:space-y-6">
@@ -261,6 +273,16 @@ export default async function InventoryPage({
                 ))}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Pagination */}
+          <div className="mt-4">
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              total={total}
+              pageSize={pageSize}
+            />
           </div>
         </>
       )}

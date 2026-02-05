@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { parsePaginationParams, createPaginatedResponse } from "@/lib/pagination";
 
 const customerSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -46,19 +47,39 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const session = await auth();
     if (!session?.user?.organizationId) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const customers = await db.customer.findMany({
-      where: { organizationId: session.user.organizationId },
-      orderBy: { name: "asc" },
-    });
+    const url = new URL(req.url);
+    const pagination = parsePaginationParams(url);
+    const search = url.searchParams.get("search") || "";
 
-    return NextResponse.json(customers);
+    const where = {
+      organizationId: session.user.organizationId,
+      ...(search && {
+        OR: [
+          { name: { contains: search, mode: "insensitive" as const } },
+          { email: { contains: search, mode: "insensitive" as const } },
+          { company: { contains: search, mode: "insensitive" as const } },
+        ],
+      }),
+    };
+
+    const [customers, total] = await Promise.all([
+      db.customer.findMany({
+        where,
+        orderBy: { name: "asc" },
+        skip: pagination.skip,
+        take: pagination.take,
+      }),
+      db.customer.count({ where }),
+    ]);
+
+    return NextResponse.json(createPaginatedResponse(customers, total, pagination));
   } catch (error) {
     console.error("Get customers error:", error);
     return NextResponse.json(
