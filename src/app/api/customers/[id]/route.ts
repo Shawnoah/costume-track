@@ -3,20 +3,13 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
-const costumeSchema = z.object({
+const customerSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  description: z.string().nullable().optional(),
-  sku: z.string().nullable().optional(),
-  size: z.string().nullable().optional(),
-  color: z.string().nullable().optional(),
-  era: z.string().nullable().optional(),
-  condition: z.enum(["EXCELLENT", "GOOD", "FAIR", "POOR", "NEEDS_REPAIR"]),
-  status: z.enum(["AVAILABLE", "RENTED", "RESERVED", "MAINTENANCE", "RETIRED"]),
-  location: z.string().nullable().optional(),
+  email: z.string().email().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  company: z.string().nullable().optional(),
+  address: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
-  purchasePrice: z.number().nullable().optional(),
-  rentalPrice: z.number().nullable().optional(),
-  categoryId: z.string().nullable().optional(),
 });
 
 export async function GET(
@@ -31,21 +24,28 @@ export async function GET(
 
     const { id } = await params;
 
-    const costume = await db.costumeItem.findFirst({
+    const customer = await db.customer.findFirst({
       where: {
         id,
         organizationId: session.user.organizationId,
       },
-      include: { category: true },
+      include: {
+        rentals: {
+          include: {
+            items: { include: { costumeItem: true } },
+          },
+          orderBy: { createdAt: "desc" },
+        },
+      },
     });
 
-    if (!costume) {
+    if (!customer) {
       return NextResponse.json({ message: "Not found" }, { status: 404 });
     }
 
-    return NextResponse.json(costume);
+    return NextResponse.json(customer);
   } catch (error) {
-    console.error("Get costume error:", error);
+    console.error("Get customer error:", error);
     return NextResponse.json(
       { message: "Something went wrong" },
       { status: 500 }
@@ -65,10 +65,9 @@ export async function PUT(
 
     const { id } = await params;
     const body = await req.json();
-    const data = costumeSchema.parse(body);
+    const data = customerSchema.parse(body);
 
-    // Verify ownership
-    const existing = await db.costumeItem.findFirst({
+    const existing = await db.customer.findFirst({
       where: {
         id,
         organizationId: session.user.organizationId,
@@ -79,12 +78,12 @@ export async function PUT(
       return NextResponse.json({ message: "Not found" }, { status: 404 });
     }
 
-    const costume = await db.costumeItem.update({
+    const customer = await db.customer.update({
       where: { id },
       data,
     });
 
-    return NextResponse.json(costume);
+    return NextResponse.json(customer);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -93,7 +92,7 @@ export async function PUT(
       );
     }
 
-    console.error("Update costume error:", error);
+    console.error("Update customer error:", error);
     return NextResponse.json(
       { message: "Something went wrong" },
       { status: 500 }
@@ -113,8 +112,7 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // Verify ownership
-    const existing = await db.costumeItem.findFirst({
+    const existing = await db.customer.findFirst({
       where: {
         id,
         organizationId: session.user.organizationId,
@@ -125,11 +123,11 @@ export async function DELETE(
       return NextResponse.json({ message: "Not found" }, { status: 404 });
     }
 
-    await db.costumeItem.delete({ where: { id } });
+    await db.customer.delete({ where: { id } });
 
     return NextResponse.json({ message: "Deleted" });
   } catch (error) {
-    console.error("Delete costume error:", error);
+    console.error("Delete customer error:", error);
     return NextResponse.json(
       { message: "Something went wrong" },
       { status: 500 }

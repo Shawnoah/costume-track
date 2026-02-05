@@ -3,20 +3,13 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
-const costumeSchema = z.object({
+const customerSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  description: z.string().nullable().optional(),
-  sku: z.string().nullable().optional(),
-  size: z.string().nullable().optional(),
-  color: z.string().nullable().optional(),
-  era: z.string().nullable().optional(),
-  condition: z.enum(["EXCELLENT", "GOOD", "FAIR", "POOR", "NEEDS_REPAIR"]),
-  status: z.enum(["AVAILABLE", "RENTED", "RESERVED", "MAINTENANCE", "RETIRED"]),
-  location: z.string().nullable().optional(),
+  email: z.string().email().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  company: z.string().nullable().optional(),
+  address: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
-  purchasePrice: z.number().nullable().optional(),
-  rentalPrice: z.number().nullable().optional(),
-  categoryId: z.string().nullable().optional(),
 });
 
 export async function POST(req: Request) {
@@ -27,16 +20,16 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const data = costumeSchema.parse(body);
+    const data = customerSchema.parse(body);
 
-    const costume = await db.costumeItem.create({
+    const customer = await db.customer.create({
       data: {
         ...data,
         organizationId: session.user.organizationId,
       },
     });
 
-    return NextResponse.json(costume, { status: 201 });
+    return NextResponse.json(customer, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -45,7 +38,7 @@ export async function POST(req: Request) {
       );
     }
 
-    console.error("Create costume error:", error);
+    console.error("Create customer error:", error);
     return NextResponse.json(
       { message: "Something went wrong" },
       { status: 500 }
@@ -60,15 +53,14 @@ export async function GET() {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const costumes = await db.costumeItem.findMany({
+    const customers = await db.customer.findMany({
       where: { organizationId: session.user.organizationId },
-      include: { category: true },
-      orderBy: { updatedAt: "desc" },
+      orderBy: { name: "asc" },
     });
 
-    return NextResponse.json(costumes);
+    return NextResponse.json(customers);
   } catch (error) {
-    console.error("Get costumes error:", error);
+    console.error("Get customers error:", error);
     return NextResponse.json(
       { message: "Something went wrong" },
       { status: 500 }
