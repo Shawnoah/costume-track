@@ -41,6 +41,7 @@ model Organization {
   aiCredits           Int      @default(0)  // Current balance
   aiCreditsResetAt    DateTime? // When monthly credits reset
   aiCreditsIncluded   Int      @default(0)  // Monthly included amount
+  unlimitedAiCredits  Boolean  @default(false) // Bypass credit limits (admin/internal use)
 
   // Limits (computed from plan, stored for quick access)
   maxItems    Int @default(500)

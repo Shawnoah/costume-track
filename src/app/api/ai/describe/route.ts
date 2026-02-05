@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
-import Anthropic from "@anthropic-ai/sdk";
+import { analyzeCostumeImage, isAIConfigured, getDefaultProvider } from "@/lib/ai";
+import { isSuperAdmin } from "@/lib/superadmin";
 
 const describeSchema = z.object({
   imageUrl: z.string().url(),
@@ -19,9 +20,10 @@ export async function POST(req: Request) {
     }
 
     // Check if AI is configured
-    if (!process.env.ANTHROPIC_API_KEY) {
+    if (!isAIConfigured()) {
+      const provider = getDefaultProvider();
       return NextResponse.json(
-        { message: "AI features not configured. Please add ANTHROPIC_API_KEY to your environment." },
+        { message: `AI features not configured. Please add ${provider === "gemini" ? "GOOGLE_AI_API_KEY" : "ANTHROPIC_API_KEY"} to your environment.` },
         { status: 503 }
       );
     }
@@ -33,6 +35,7 @@ export async function POST(req: Request) {
         planTier: true,
         aiCredits: true,
         aiCreditsIncluded: true,
+        unlimitedAiCredits: true,
       },
     });
 
@@ -40,28 +43,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Organization not found" }, { status: 404 });
     }
 
-    // Check if organization has access to AI features
-    if (organization.planTier === "CORE") {
-      return NextResponse.json(
-        { message: "AI features require a Pro or Team plan. Please upgrade to use this feature." },
-        { status: 403 }
-      );
-    }
+    // Check if user has unlimited access (superadmin or org setting)
+    const hasUnlimitedAccess = organization.unlimitedAiCredits || isSuperAdmin(session.user.email);
 
-    // Check AI credits
-    if (organization.aiCredits < AI_CREDIT_COST) {
-      return NextResponse.json(
-        { message: "Insufficient AI credits. Please purchase more credits or wait for your monthly reset." },
-        { status: 402 }
-      );
+    // Skip tier/credit checks if has unlimited access
+    if (!hasUnlimitedAccess) {
+      // Check if organization has access to AI features
+      if (organization.planTier === "CORE") {
+        return NextResponse.json(
+          { message: "AI features require a Pro or Team plan. Please upgrade to use this feature." },
+          { status: 403 }
+        );
+      }
+
+      // Check AI credits
+      if (organization.aiCredits < AI_CREDIT_COST) {
+        return NextResponse.json(
+          { message: "Insufficient AI credits. Please purchase more credits or wait for your monthly reset." },
+          { status: 402 }
+        );
+      }
     }
 
     const body = await req.json();
     const { imageUrl, existingName } = describeSchema.parse(body);
-
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
 
     // Fetch the image and convert to base64
     const imageResponse = await fetch(imageUrl);
@@ -76,90 +81,40 @@ export async function POST(req: Request) {
     const base64Image = Buffer.from(imageBuffer).toString("base64");
     const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
 
-    const prompt = existingName
-      ? `You are helping a costume rental shop catalog their inventory. Analyze this costume photo and provide a detailed description.
+    // Use the engine-agnostic AI abstraction
+    const result = await analyzeCostumeImage(base64Image, contentType, existingName);
 
-The costume is named: "${existingName}"
-
-Provide a JSON response with the following fields:
-- description: A detailed 2-3 sentence description of the costume suitable for a rental catalog. Focus on style, notable features, materials (if visible), and what type of character or era it would suit.
-- era: The historical era or time period the costume represents (e.g., "Victorian", "1920s Flapper", "Medieval", "Contemporary", "Fantasy"). Be specific if possible.
-- color: The primary color(s) of the costume (e.g., "Deep burgundy", "Black and gold", "Cream with silver accents")
-- suggestedCategory: What category this costume might belong to (e.g., "Formal Wear", "Period Costume", "Fantasy", "Uniforms", "Casual Wear")
-
-Respond only with valid JSON, no markdown.`
-      : `You are helping a costume rental shop catalog their inventory. Analyze this costume photo and provide details.
-
-Provide a JSON response with the following fields:
-- suggestedName: A descriptive name for this costume (e.g., "Victorian Ball Gown", "1920s Gangster Suit", "Medieval Knight Armor")
-- description: A detailed 2-3 sentence description of the costume suitable for a rental catalog. Focus on style, notable features, materials (if visible), and what type of character or era it would suit.
-- era: The historical era or time period the costume represents (e.g., "Victorian", "1920s Flapper", "Medieval", "Contemporary", "Fantasy"). Be specific if possible.
-- color: The primary color(s) of the costume (e.g., "Deep burgundy", "Black and gold", "Cream with silver accents")
-- suggestedCategory: What category this costume might belong to (e.g., "Formal Wear", "Period Costume", "Fantasy", "Uniforms", "Casual Wear")
-
-Respond only with valid JSON, no markdown.`;
-
-    const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1024,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: contentType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
-                data: base64Image,
-              },
-            },
-            {
-              type: "text",
-              text: prompt,
-            },
-          ],
-        },
-      ],
-    });
-
-    // Extract the text response
-    const textContent = message.content.find((c) => c.type === "text");
-    if (!textContent || textContent.type !== "text") {
-      return NextResponse.json(
-        { message: "No response from AI" },
-        { status: 500 }
-      );
-    }
-
-    // Deduct credits and log usage
-    await db.$transaction([
-      db.organization.update({
-        where: { id: session.user.organizationId },
-        data: { aiCredits: { decrement: AI_CREDIT_COST } },
-      }),
-      db.aIUsageLog.create({
+    // Deduct credits (unless unlimited) and log usage
+    if (hasUnlimitedAccess) {
+      // Just log usage without deducting credits
+      await db.aIUsageLog.create({
         data: {
           type: "GENERATE_DESC",
-          creditsUsed: AI_CREDIT_COST,
+          creditsUsed: 0,
           organizationId: session.user.organizationId,
           userId: session.user.id,
-          metadata: { imageUrl, existingName },
+          metadata: { imageUrl, existingName, provider: getDefaultProvider(), unlimited: true },
         },
-      }),
-    ]);
-
-    // Parse the JSON response
-    try {
-      const result = JSON.parse(textContent.text);
-      return NextResponse.json(result);
-    } catch {
-      // If JSON parsing fails, return the raw text
-      return NextResponse.json({
-        description: textContent.text,
-        error: "Could not parse structured response",
       });
+    } else {
+      await db.$transaction([
+        db.organization.update({
+          where: { id: session.user.organizationId },
+          data: { aiCredits: { decrement: AI_CREDIT_COST } },
+        }),
+        db.aIUsageLog.create({
+          data: {
+            type: "GENERATE_DESC",
+            creditsUsed: AI_CREDIT_COST,
+            organizationId: session.user.organizationId,
+            userId: session.user.id,
+            metadata: { imageUrl, existingName, provider: getDefaultProvider() },
+          },
+        }),
+      ]);
     }
+
+    return NextResponse.json(result);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
