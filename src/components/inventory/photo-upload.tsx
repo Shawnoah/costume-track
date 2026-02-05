@@ -5,7 +5,6 @@ import Image from "next/image";
 import { useDropzone } from "react-dropzone";
 import { X, Upload, Loader2, Star, Camera, Layers, Shirt, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -209,14 +208,6 @@ export function PhotoUpload({ photos, onChange }: PhotoUploadProps) {
                 MAIN
               </div>
             </div>
-            <div className="mt-2">
-              <Input
-                placeholder="Description (optional)"
-                value={mainPhoto.description}
-                onChange={(e) => updatePhoto(mainPhoto.key, { description: e.target.value })}
-                className="bg-zinc-800 border-zinc-700 text-zinc-100 text-sm"
-              />
-            </div>
           </div>
         ) : (
           <div
@@ -329,12 +320,12 @@ export function PhotoUpload({ photos, onChange }: PhotoUploadProps) {
                         </Button>
                       </div>
                     </div>
-                    <div className="p-2 space-y-1">
+                    <div className="p-1.5">
                       <Select
                         value={photo.type}
                         onValueChange={(v) => updatePhoto(photo.key, { type: v as PhotoType })}
                       >
-                        <SelectTrigger className="h-7 bg-zinc-700 border-zinc-600 text-xs">
+                        <SelectTrigger className="h-6 bg-zinc-700 border-zinc-600 text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -345,12 +336,6 @@ export function PhotoUpload({ photos, onChange }: PhotoUploadProps) {
                           ))}
                         </SelectContent>
                       </Select>
-                      <Input
-                        placeholder="Description..."
-                        value={photo.description}
-                        onChange={(e) => updatePhoto(photo.key, { description: e.target.value })}
-                        className="h-7 bg-zinc-700 border-zinc-600 text-zinc-100 text-xs"
-                      />
                     </div>
                   </div>
                 ))}

@@ -70,7 +70,7 @@ async function analyzeWithGemini(
   existingName?: string
 ): Promise<CostumeAnalysisResult> {
   const client = getGeminiClient();
-  const model = client.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = client.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
   const prompt = buildPrompt(existingName);
 
