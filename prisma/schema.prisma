@@ -125,18 +125,28 @@ model CostumeItem {
 }
 
 model CostumePhoto {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   url           String
-  key           String   // Uploadthing file key for deletion
+  key           String    // Blob storage key for deletion
+  type          PhotoType @default(MAIN)
   description   String?
-  sortOrder     Int      @default(0)
-  createdAt     DateTime @default(now())
+  sortOrder     Int       @default(0)
+  createdAt     DateTime  @default(now())
   costumeItemId String
 
   // Relations
   costumeItem CostumeItem @relation(fields: [costumeItemId], references: [id], onDelete: Cascade)
 
   @@index([costumeItemId])
+  @@index([type])
+}
+
+enum PhotoType {
+  MAIN        // Primary identification photo - clear full view
+  ALTERNATE   // Different angles/views
+  FEATURE     // Closeup on specific features
+  MATERIAL    // Closeup showing materials/fabric
+  INFO        // Tags, labels, marks, care instructions
 }
 
 enum ItemCondition {

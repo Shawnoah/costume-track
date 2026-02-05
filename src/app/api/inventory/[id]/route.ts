@@ -7,6 +7,7 @@ const photoSchema = z.object({
   id: z.string().optional(),
   url: z.string(),
   key: z.string(),
+  type: z.enum(["MAIN", "ALTERNATE", "FEATURE", "MATERIAL", "INFO"]),
   description: z.string().nullable().optional(),
   sortOrder: z.number(),
 });
@@ -47,7 +48,7 @@ export async function GET(
       },
       include: {
         category: true,
-        photos: { orderBy: { sortOrder: "asc" } },
+        photos: { orderBy: [{ type: "asc" }, { sortOrder: "asc" }] },
       },
     });
 
@@ -114,6 +115,7 @@ export async function PUT(
             await tx.costumePhoto.update({
               where: { id: photo.id },
               data: {
+                type: photo.type,
                 description: photo.description,
                 sortOrder: photo.sortOrder,
               },
@@ -124,6 +126,7 @@ export async function PUT(
               data: {
                 url: photo.url,
                 key: photo.key,
+                type: photo.type,
                 description: photo.description,
                 sortOrder: photo.sortOrder,
                 costumeItemId: id,
@@ -137,7 +140,7 @@ export async function PUT(
       return tx.costumeItem.update({
         where: { id },
         data,
-        include: { photos: { orderBy: { sortOrder: "asc" } } },
+        include: { photos: { orderBy: [{ type: "asc" }, { sortOrder: "asc" }] } },
       });
     });
 

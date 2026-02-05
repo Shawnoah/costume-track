@@ -7,6 +7,7 @@ const photoSchema = z.object({
   id: z.string().optional(),
   url: z.string(),
   key: z.string(),
+  type: z.enum(["MAIN", "ALTERNATE", "FEATURE", "MATERIAL", "INFO"]),
   description: z.string().nullable().optional(),
   sortOrder: z.number(),
 });
@@ -46,12 +47,13 @@ export async function POST(req: Request) {
           create: photos.map((p) => ({
             url: p.url,
             key: p.key,
+            type: p.type,
             description: p.description,
             sortOrder: p.sortOrder,
           })),
         } : undefined,
       },
-      include: { photos: { orderBy: { sortOrder: "asc" } } },
+      include: { photos: { orderBy: [{ type: "asc" }, { sortOrder: "asc" }] } },
     });
 
     return NextResponse.json(costume, { status: 201 });
@@ -82,7 +84,7 @@ export async function GET() {
       where: { organizationId: session.user.organizationId },
       include: {
         category: true,
-        photos: { orderBy: { sortOrder: "asc" } },
+        photos: { orderBy: [{ type: "asc" }, { sortOrder: "asc" }] },
       },
       orderBy: { updatedAt: "desc" },
     });

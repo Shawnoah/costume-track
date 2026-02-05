@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import { PhotoUpload, type Photo } from "./photo-upload";
+import { PhotoUpload, type Photo, type PhotoType } from "./photo-upload";
 
 interface Category {
   id: string;
@@ -26,6 +26,7 @@ interface CostumePhoto {
   id: string;
   url: string;
   key: string;
+  type: PhotoType;
   description: string | null;
   sortOrder: number;
 }
@@ -62,6 +63,7 @@ export function CostumeForm({ categories, costume }: CostumeFormProps) {
       id: p.id,
       url: p.url,
       key: p.key,
+      type: p.type,
       description: p.description || "",
       sortOrder: p.sortOrder,
     })) || []
@@ -93,6 +95,7 @@ export function CostumeForm({ categories, costume }: CostumeFormProps) {
         id: p.id,
         url: p.url,
         key: p.key,
+        type: p.type,
         description: p.description || null,
         sortOrder: p.sortOrder,
       })),
@@ -286,7 +289,6 @@ export function CostumeForm({ categories, costume }: CostumeFormProps) {
             <PhotoUpload
               photos={photos}
               onChange={setPhotos}
-              costumeId={costume?.id}
             />
           </CardContent>
         </Card>
