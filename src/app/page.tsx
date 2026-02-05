@@ -109,7 +109,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-zinc-800 py-6 px-6">
         <div className="max-w-5xl mx-auto flex items-center justify-between text-sm text-zinc-500">
-          <p>&copy; {new Date().getFullYear()} CostumeTrack. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} CostumeTrack, LLC. All rights reserved.</p>
           <div className="flex gap-6">
             <Link href="#" className="hover:text-zinc-400 transition-colors">Privacy</Link>
             <Link href="#" className="hover:text-zinc-400 transition-colors">Terms</Link>
