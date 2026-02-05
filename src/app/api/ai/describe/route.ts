@@ -123,9 +123,10 @@ export async function POST(req: Request) {
       );
     }
 
-    console.error("AI describe error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("AI describe error:", errorMessage, error);
     return NextResponse.json(
-      { message: "Something went wrong with AI processing" },
+      { message: `AI processing failed: ${errorMessage}` },
       { status: 500 }
     );
   }
