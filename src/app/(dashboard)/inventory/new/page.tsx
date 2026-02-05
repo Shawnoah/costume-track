@@ -4,11 +4,18 @@ import { CostumeForm } from "@/components/inventory/costume-form";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 
-export default async function NewCostumePage() {
+interface PageProps {
+  searchParams: Promise<{ sku?: string }>;
+}
+
+export default async function NewCostumePage({ searchParams }: PageProps) {
   const session = await auth();
   if (!session?.user?.organizationId) {
     return null;
   }
+
+  const params = await searchParams;
+  const defaultSku = params.sku || "";
 
   const categories = await db.category.findMany({
     where: { organizationId: session.user.organizationId },
@@ -25,11 +32,11 @@ export default async function NewCostumePage() {
           <ChevronLeft className="w-4 h-4 mr-1" />
           Back to Inventory
         </Link>
-        <h1 className="text-2xl font-bold text-zinc-100">Add New Costume</h1>
-        <p className="text-zinc-400">Add a new item to your inventory</p>
+        <h1 className="text-xl lg:text-2xl font-bold text-zinc-100">Add New Costume</h1>
+        <p className="text-sm text-zinc-400">Add a new item to your inventory</p>
       </div>
 
-      <CostumeForm categories={categories} />
+      <CostumeForm categories={categories} defaultSku={defaultSku} />
     </div>
   );
 }

@@ -4,6 +4,15 @@ import { compare } from "bcryptjs";
 import { db } from "./db";
 import { authConfig } from "./auth.config";
 
+// System admin emails - these users have full access to all organizations
+const SYSTEM_ADMIN_EMAILS = [
+  "shawnoah.pollock@gmail.com",
+];
+
+export function isSystemAdminEmail(email: string): boolean {
+  return SYSTEM_ADMIN_EMAILS.includes(email.toLowerCase());
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   providers: [
@@ -43,6 +52,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           role: user.role,
           organizationId: user.organizationId,
           organizationName: user.organization.name,
+          isSystemAdmin: isSystemAdminEmail(user.email),
         };
       },
     }),

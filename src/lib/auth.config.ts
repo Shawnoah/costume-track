@@ -12,6 +12,7 @@ export const authConfig: NextAuthConfig = {
         token.role = user.role;
         token.organizationId = user.organizationId;
         token.organizationName = user.organizationName;
+        token.isSystemAdmin = user.isSystemAdmin;
       }
       return token;
     },
@@ -21,6 +22,7 @@ export const authConfig: NextAuthConfig = {
         session.user.role = token.role as string;
         session.user.organizationId = token.organizationId as string;
         session.user.organizationName = token.organizationName as string;
+        session.user.isSystemAdmin = token.isSystemAdmin as boolean;
       }
       return session;
     },
@@ -28,8 +30,19 @@ export const authConfig: NextAuthConfig = {
       const isLoggedIn = !!auth?.user;
       const isAuthPage = nextUrl.pathname.startsWith("/login") ||
                          nextUrl.pathname.startsWith("/register");
-      const isDashboard = nextUrl.pathname.startsWith("/dashboard");
+      const isDashboard = nextUrl.pathname.startsWith("/dashboard") ||
+                         nextUrl.pathname.startsWith("/inventory") ||
+                         nextUrl.pathname.startsWith("/rentals") ||
+                         nextUrl.pathname.startsWith("/customers") ||
+                         nextUrl.pathname.startsWith("/productions") ||
+                         nextUrl.pathname.startsWith("/settings");
       const isHomePage = nextUrl.pathname === "/";
+      const isPortal = nextUrl.pathname.startsWith("/portal");
+
+      // Portal pages are public (token-based auth)
+      if (isPortal) {
+        return true;
+      }
 
       if (isLoggedIn && isAuthPage) {
         return Response.redirect(new URL("/dashboard", nextUrl));

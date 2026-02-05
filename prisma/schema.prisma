@@ -18,6 +18,16 @@ model Organization {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Public Profile (for landing page)
+  description     String?   // About the shop
+  contactEmail    String?   // Public contact email
+  contactPhone    String?   // Public phone number
+  address         String?   // Physical address
+  website         String?   // External website URL
+  logoUrl         String?   // Logo image URL
+  logoKey         String?   // Blob storage key for logo
+  publicPageEnabled Boolean @default(false)  // Whether /{slug} is accessible
+
   // Subscription & Billing
   planTier        PlanTier    @default(CORE)
   storageSize     StorageSize @default(SMALL)
@@ -35,6 +45,9 @@ model Organization {
   // Limits (computed from plan, stored for quick access)
   maxItems    Int @default(500)
   maxUsers    Int @default(1)
+
+  // Rental Agreement
+  rentalAgreementText String?  // Custom agreement text (markdown supported)
 
   // Relations
   users         User[]
@@ -218,11 +231,16 @@ model Customer {
   updatedAt      DateTime @updatedAt
   organizationId String
 
+  // Portal access
+  portalToken    String?   @unique @default(cuid())
+  portalEnabled  Boolean   @default(false)
+
   // Relations
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   rentals      Rental[]
 
   @@index([organizationId])
+  @@index([portalToken])
 }
 
 model Production {
@@ -263,6 +281,11 @@ model Rental {
   customerId     String
   productionId   String?
   createdById    String
+
+  // Agreement tracking
+  agreementAcceptedAt DateTime?   // When the agreement was accepted
+  agreementSignature  String?     // Digital signature (typed name)
+  agreementText       String?     // Snapshot of agreement at time of signing
 
   // Relations
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)

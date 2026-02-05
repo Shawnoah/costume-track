@@ -2,57 +2,12 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
-import { isAdminRole } from "@/lib/utils";
 
-const customerSchema = z.object({
+const categorySchema = z.object({
   name: z.string().min(1, "Name is required"),
-  email: z.string().email().nullable().optional(),
-  phone: z.string().nullable().optional(),
-  company: z.string().nullable().optional(),
-  address: z.string().nullable().optional(),
-  notes: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
+  color: z.string().nullable().optional(),
 });
-
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const session = await auth();
-    if (!session?.user?.organizationId) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-    }
-
-    const { id } = await params;
-
-    const customer = await db.customer.findFirst({
-      where: {
-        id,
-        organizationId: session.user.organizationId,
-      },
-      include: {
-        rentals: {
-          include: {
-            items: { include: { costumeItem: true } },
-          },
-          orderBy: { createdAt: "desc" },
-        },
-      },
-    });
-
-    if (!customer) {
-      return NextResponse.json({ message: "Not found" }, { status: 404 });
-    }
-
-    return NextResponse.json(customer);
-  } catch (error) {
-    console.error("Get customer error:", error);
-    return NextResponse.json(
-      { message: "Something went wrong" },
-      { status: 500 }
-    );
-  }
-}
 
 export async function PUT(
   req: Request,
@@ -64,11 +19,17 @@ export async function PUT(
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
+    // Only owners and admins can update categories
+    if (session.user.role !== "OWNER" && session.user.role !== "ADMIN") {
+      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+    }
+
     const { id } = await params;
     const body = await req.json();
-    const data = customerSchema.parse(body);
+    const data = categorySchema.parse(body);
 
-    const existing = await db.customer.findFirst({
+    // Verify ownership
+    const existing = await db.category.findFirst({
       where: {
         id,
         organizationId: session.user.organizationId,
@@ -79,12 +40,16 @@ export async function PUT(
       return NextResponse.json({ message: "Not found" }, { status: 404 });
     }
 
-    const customer = await db.customer.update({
+    const category = await db.category.update({
       where: { id },
-      data,
+      data: {
+        name: data.name,
+        description: data.description,
+        color: data.color,
+      },
     });
 
-    return NextResponse.json(customer);
+    return NextResponse.json(category);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -93,7 +58,15 @@ export async function PUT(
       );
     }
 
-    console.error("Update customer error:", error);
+    // Handle unique constraint violation
+    if ((error as any)?.code === "P2002") {
+      return NextResponse.json(
+        { message: "A category with this name already exists" },
+        { status: 400 }
+      );
+    }
+
+    console.error("Update category error:", error);
     return NextResponse.json(
       { message: "Something went wrong" },
       { status: 500 }
@@ -111,14 +84,15 @@ export async function DELETE(
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    // Only owners and admins can delete customers
-    if (!isAdminRole(session.user.role)) {
+    // Only owners and admins can delete categories
+    if (session.user.role !== "OWNER" && session.user.role !== "ADMIN") {
       return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }
 
     const { id } = await params;
 
-    const existing = await db.customer.findFirst({
+    // Verify ownership
+    const existing = await db.category.findFirst({
       where: {
         id,
         organizationId: session.user.organizationId,
@@ -129,11 +103,11 @@ export async function DELETE(
       return NextResponse.json({ message: "Not found" }, { status: 404 });
     }
 
-    await db.customer.delete({ where: { id } });
+    await db.category.delete({ where: { id } });
 
     return NextResponse.json({ message: "Deleted" });
   } catch (error) {
-    console.error("Delete customer error:", error);
+    console.error("Delete category error:", error);
     return NextResponse.json(
       { message: "Something went wrong" },
       { status: 500 }

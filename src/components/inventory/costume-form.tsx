@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { PhotoUpload, type Photo, type PhotoType } from "./photo-upload";
+import { AIDescribeButton } from "./ai-describe-button";
 
 interface Category {
   id: string;
@@ -52,9 +53,10 @@ interface CostumeData {
 interface CostumeFormProps {
   categories: Category[];
   costume?: CostumeData;
+  defaultSku?: string;
 }
 
-export function CostumeForm({ categories, costume }: CostumeFormProps) {
+export function CostumeForm({ categories, costume, defaultSku }: CostumeFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +71,36 @@ export function CostumeForm({ categories, costume }: CostumeFormProps) {
     })) || []
   );
 
+  // Refs for AI-fillable fields
+  const nameRef = useRef<HTMLInputElement>(null);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const colorRef = useRef<HTMLInputElement>(null);
+  const eraRef = useRef<HTMLInputElement>(null);
+
   const isEditing = !!costume?.id;
+  const mainPhoto = photos.find((p) => p.type === "MAIN");
+
+  // Handle AI describe results
+  const handleAIResult = (result: {
+    suggestedName?: string;
+    description?: string;
+    era?: string;
+    color?: string;
+    suggestedCategory?: string;
+  }) => {
+    if (result.suggestedName && nameRef.current && !nameRef.current.value) {
+      nameRef.current.value = result.suggestedName;
+    }
+    if (result.description && descriptionRef.current) {
+      descriptionRef.current.value = result.description;
+    }
+    if (result.color && colorRef.current) {
+      colorRef.current.value = result.color;
+    }
+    if (result.era && eraRef.current) {
+      eraRef.current.value = result.era;
+    }
+  };
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -118,7 +149,8 @@ export function CostumeForm({ categories, costume }: CostumeFormProps) {
         return;
       }
 
-      router.push("/inventory");
+      const redirectTo = isEditing ? `/inventory/${costume.id}` : "/inventory";
+      router.push(redirectTo);
       router.refresh();
     } catch {
       setError("Something went wrong");
@@ -144,6 +176,7 @@ export function CostumeForm({ categories, costume }: CostumeFormProps) {
             <div className="space-y-2">
               <Label htmlFor="name" className="text-zinc-300">Name *</Label>
               <Input
+                ref={nameRef}
                 id="name"
                 name="name"
                 required
@@ -154,8 +187,18 @@ export function CostumeForm({ categories, costume }: CostumeFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description" className="text-zinc-300">Description</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="description" className="text-zinc-300">Description</Label>
+                {mainPhoto && (
+                  <AIDescribeButton
+                    imageUrl={mainPhoto.url}
+                    existingName={nameRef.current?.value || costume?.name}
+                    onApply={handleAIResult}
+                  />
+                )}
+              </div>
               <Textarea
+                ref={descriptionRef}
                 id="description"
                 name="description"
                 defaultValue={costume?.description || ""}
@@ -166,11 +209,11 @@ export function CostumeForm({ categories, costume }: CostumeFormProps) {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="sku" className="text-zinc-300">SKU / Code</Label>
+                <Label htmlFor="sku" className="text-zinc-300">SKU / Barcode</Label>
                 <Input
                   id="sku"
                   name="sku"
-                  defaultValue={costume?.sku || ""}
+                  defaultValue={costume?.sku || defaultSku || ""}
                   placeholder="VIC-001"
                   className="bg-zinc-800 border-zinc-700 text-zinc-100"
                 />
@@ -214,6 +257,7 @@ export function CostumeForm({ categories, costume }: CostumeFormProps) {
               <div className="space-y-2">
                 <Label htmlFor="color" className="text-zinc-300">Color</Label>
                 <Input
+                  ref={colorRef}
                   id="color"
                   name="color"
                   defaultValue={costume?.color || ""}
@@ -226,6 +270,7 @@ export function CostumeForm({ categories, costume }: CostumeFormProps) {
             <div className="space-y-2">
               <Label htmlFor="era" className="text-zinc-300">Era / Period</Label>
               <Input
+                ref={eraRef}
                 id="era"
                 name="era"
                 defaultValue={costume?.era || ""}

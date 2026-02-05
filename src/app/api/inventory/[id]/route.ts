@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { isAdminRole } from "@/lib/utils";
 
 const photoSchema = z.object({
   id: z.string().optional(),
@@ -169,6 +170,11 @@ export async function DELETE(
     const session = await auth();
     if (!session?.user?.organizationId) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    // Only owners and admins can delete costumes
+    if (!isAdminRole(session.user.role)) {
+      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }
 
     const { id } = await params;

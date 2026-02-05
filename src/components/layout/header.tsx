@@ -13,6 +13,7 @@ import {
 import { signOut } from "next-auth/react";
 import { Settings, LogOut, Building2 } from "lucide-react";
 import Link from "next/link";
+import { MobileNav } from "./sidebar";
 
 export function Header() {
   const { data: session } = useSession();
@@ -26,22 +27,27 @@ export function Header() {
     .slice(0, 2) || "?";
 
   return (
-    <header className="h-16 border-b border-zinc-800 bg-zinc-900 px-6 flex items-center justify-between">
+    <header className="h-14 lg:h-16 border-b border-zinc-800 bg-zinc-900 px-4 lg:px-6 flex items-center justify-between">
+      {/* Left side - Mobile nav + Org name */}
       <div className="flex items-center gap-3">
-        <Building2 className="w-5 h-5 text-zinc-500" />
-        <span className="text-sm font-medium text-zinc-300">
-          {user?.organizationName || "Organization"}
-        </span>
+        <MobileNav />
+        <div className="flex items-center gap-2">
+          <Building2 className="w-4 h-4 lg:w-5 lg:h-5 text-zinc-500" />
+          <span className="text-sm font-medium text-zinc-300 truncate max-w-[150px] sm:max-w-none">
+            {user?.organizationName || "Organization"}
+          </span>
+        </div>
       </div>
 
+      {/* Right side - User menu */}
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-3 outline-none">
+        <DropdownMenuTrigger className="flex items-center gap-2 lg:gap-3 outline-none">
           <div className="text-right hidden sm:block">
             <p className="text-sm font-medium text-zinc-200">{user?.name}</p>
             <p className="text-xs text-zinc-500">{user?.email}</p>
           </div>
-          <Avatar className="h-9 w-9 border border-zinc-700">
-            <AvatarFallback className="bg-purple-600/20 text-purple-400 text-sm">
+          <Avatar className="h-8 w-8 lg:h-9 lg:w-9 border border-zinc-700">
+            <AvatarFallback className="bg-purple-600/20 text-purple-400 text-xs lg:text-sm">
               {initials}
             </AvatarFallback>
           </Avatar>
