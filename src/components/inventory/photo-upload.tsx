@@ -3,13 +3,9 @@
 import { useState, useCallback } from "react";
 import Image from "next/image";
 import { useDropzone } from "react-dropzone";
-import { generateReactHelpers } from "@uploadthing/react";
 import { X, Upload, Loader2, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { OurFileRouter } from "@/lib/uploadthing";
-
-const { useUploadThing } = generateReactHelpers<OurFileRouter>();
 
 export interface Photo {
   id?: string;
@@ -25,39 +21,65 @@ interface PhotoUploadProps {
   costumeId?: string;
 }
 
-export function PhotoUpload({ photos, onChange, costumeId }: PhotoUploadProps) {
+export function PhotoUpload({ photos, onChange }: PhotoUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
-  const { startUpload } = useUploadThing("costumePhoto", {
-    onUploadProgress: (p) => setUploadProgress(p),
-    onClientUploadComplete: (res) => {
-      if (res) {
-        const newPhotos = res.map((file, index) => ({
-          url: file.ufsUrl,
-          key: file.key,
-          description: "",
-          sortOrder: photos.length + index,
-        }));
-        onChange([...photos, ...newPhotos]);
-      }
-      setUploading(false);
-      setUploadProgress(0);
-    },
-    onUploadError: (error) => {
-      console.error("Upload error:", error);
-      setUploading(false);
-      setUploadProgress(0);
-    },
-  });
+  const uploadFile = async (file: File): Promise<{ url: string; key: string } | null> => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || "Upload failed");
+    }
+
+    return res.json();
+  };
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
       if (acceptedFiles.length === 0) return;
+
       setUploading(true);
-      await startUpload(acceptedFiles);
+      setError(null);
+      setUploadProgress(0);
+
+      const newPhotos: Photo[] = [];
+
+      try {
+        for (let i = 0; i < acceptedFiles.length; i++) {
+          const file = acceptedFiles[i];
+          setUploadProgress(Math.round(((i) / acceptedFiles.length) * 100));
+
+          const result = await uploadFile(file);
+          if (result) {
+            newPhotos.push({
+              url: result.url,
+              key: result.key,
+              description: "",
+              sortOrder: photos.length + i,
+            });
+          }
+        }
+
+        onChange([...photos, ...newPhotos]);
+        setUploadProgress(100);
+      } catch (err) {
+        console.error("Upload error:", err);
+        setError(err instanceof Error ? err.message : "Upload failed");
+      } finally {
+        setUploading(false);
+        setUploadProgress(0);
+      }
     },
-    [startUpload]
+    [photos, onChange]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -69,7 +91,20 @@ export function PhotoUpload({ photos, onChange, costumeId }: PhotoUploadProps) {
     disabled: uploading,
   });
 
-  const removePhoto = (index: number) => {
+  const removePhoto = async (index: number) => {
+    const photo = photos[index];
+
+    // Try to delete from blob storage (ignore errors)
+    try {
+      await fetch("/api/upload", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: photo.url }),
+      });
+    } catch (err) {
+      console.error("Failed to delete from storage:", err);
+    }
+
     const newPhotos = photos.filter((_, i) => i !== index);
     // Update sort orders
     newPhotos.forEach((p, i) => (p.sortOrder = i));
@@ -94,6 +129,13 @@ export function PhotoUpload({ photos, onChange, costumeId }: PhotoUploadProps) {
 
   return (
     <div className="space-y-4">
+      {/* Error message */}
+      {error && (
+        <div className="p-3 text-sm text-red-400 bg-red-950/50 border border-red-900 rounded-md">
+          {error}
+        </div>
+      )}
+
       {/* Upload Zone */}
       <div
         {...getRootProps()}
@@ -130,7 +172,7 @@ export function PhotoUpload({ photos, onChange, costumeId }: PhotoUploadProps) {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {photos.map((photo, index) => (
             <div
-              key={photo.key}
+              key={photo.key || photo.url}
               className="relative bg-zinc-800 rounded-lg overflow-hidden border border-zinc-700"
             >
               {/* Image */}
@@ -140,6 +182,7 @@ export function PhotoUpload({ photos, onChange, costumeId }: PhotoUploadProps) {
                   alt={photo.description || `Photo ${index + 1}`}
                   fill
                   className="object-cover"
+                  unoptimized
                 />
                 {/* Overlay buttons */}
                 <div className="absolute top-2 right-2 flex gap-1">
