@@ -70,7 +70,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center px-4 py-8 overflow-auto">
       <Card className="w-full max-w-md bg-zinc-900 border-zinc-800">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">

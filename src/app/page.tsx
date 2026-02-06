@@ -31,7 +31,7 @@ export default function Home() {
       </header>
 
       {/* Hero */}
-      <main className="flex-1 flex items-center justify-center px-6">
+      <main className="flex-1 flex items-center justify-center px-6 py-12 sm:py-0">
         <div className="text-center space-y-8 max-w-2xl">
           <Image
             src="/CostumeTrack mark fullsize.png"

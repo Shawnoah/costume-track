@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import Image from "next/image";
 import { useDropzone } from "react-dropzone";
-import { X, Upload, Loader2, Star, Camera, Layers, Shirt, Tag } from "lucide-react";
+import { X, Upload, Loader2, Star, Camera, Layers, Shirt, Tag, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -42,9 +42,28 @@ export function PhotoUpload({ photos, onChange }: PhotoUploadProps) {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [uploadType, setUploadType] = useState<PhotoType>("MAIN");
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const mainPhoto = photos.find((p) => p.type === "MAIN");
   const hasMain = !!mainPhoto;
+
+  // Handle camera capture on mobile
+  const handleCameraCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const fileArray = Array.from(files);
+    await onDrop(fileArray);
+
+    // Reset input so same file can be selected again
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = "";
+    }
+  };
+
+  const openCamera = () => {
+    cameraInputRef.current?.click();
+  };
 
   const uploadFile = async (file: File): Promise<{ url: string; key: string } | null> => {
     const formData = new FormData();
@@ -168,6 +187,16 @@ export function PhotoUpload({ photos, onChange }: PhotoUploadProps) {
 
   return (
     <div className="space-y-6">
+      {/* Hidden camera input for mobile */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleCameraCapture}
+        className="hidden"
+      />
+
       {/* Error message */}
       {error && (
         <div className="p-3 text-sm text-red-400 bg-red-950/50 border border-red-900 rounded-md">
@@ -177,10 +206,27 @@ export function PhotoUpload({ photos, onChange }: PhotoUploadProps) {
 
       {/* Main Photo Section */}
       <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Star className="w-5 h-5 text-yellow-500" />
-          <h3 className="text-sm font-medium text-zinc-200">Main Photo</h3>
-          <span className="text-xs text-zinc-500">Required - clear full view of the costume</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Star className="w-5 h-5 text-yellow-500" />
+            <h3 className="text-sm font-medium text-zinc-200">Main Photo</h3>
+            <span className="text-xs text-zinc-500 hidden sm:inline">Required - clear full view of the costume</span>
+          </div>
+          {/* Camera button - visible on mobile */}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setUploadType("MAIN");
+              openCamera();
+            }}
+            disabled={uploading}
+            className="sm:hidden border-zinc-700 text-zinc-300"
+          >
+            <Smartphone className="w-4 h-4 mr-2" />
+            Take Photo
+          </Button>
         </div>
 
         {mainPhoto ? (
@@ -238,23 +284,36 @@ export function PhotoUpload({ photos, onChange }: PhotoUploadProps) {
 
       {/* Other Photos Section */}
       <div className="space-y-4 pt-4 border-t border-zinc-800">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <h3 className="text-sm font-medium text-zinc-200">Additional Photos</h3>
-          <Select value={uploadType} onValueChange={(v) => setUploadType(v as PhotoType)}>
-            <SelectTrigger className="w-44 h-8 bg-zinc-800 border-zinc-700 text-sm">
-              <SelectValue placeholder="Photo type" />
-            </SelectTrigger>
-            <SelectContent>
-              {PHOTO_TYPES.map((type) => (
-                <SelectItem key={type.value} value={type.value}>
-                  <div className="flex items-center gap-2">
-                    {type.icon}
-                    <span>{type.label}</span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <Select value={uploadType} onValueChange={(v) => setUploadType(v as PhotoType)}>
+              <SelectTrigger className="w-36 sm:w-44 h-8 bg-zinc-800 border-zinc-700 text-sm">
+                <SelectValue placeholder="Photo type" />
+              </SelectTrigger>
+              <SelectContent>
+                {PHOTO_TYPES.map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    <div className="flex items-center gap-2">
+                      {type.icon}
+                      <span>{type.label}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {/* Camera button - visible on mobile */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={openCamera}
+              disabled={uploading}
+              className="sm:hidden border-zinc-700 text-zinc-300 h-8"
+            >
+              <Smartphone className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
 
         {/* Upload Zone */}
