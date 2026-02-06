@@ -390,8 +390,8 @@ export function CostumeForm({ categories, costume, defaultSku }: CostumeFormProp
         </Card>
       </div>
 
-      {/* Actions */}
-      <div className="flex justify-end gap-3">
+      {/* Actions - Sticky on mobile for visibility */}
+      <div className="sticky bottom-0 left-0 right-0 bg-zinc-950/95 backdrop-blur-sm border-t border-zinc-800 -mx-4 px-4 py-4 mt-6 flex justify-end gap-3 sm:static sm:bg-transparent sm:border-0 sm:mx-0 sm:px-0 sm:backdrop-blur-none">
         <Button
           type="button"
           variant="outline"
