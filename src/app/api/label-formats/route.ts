@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { LABEL_FORMAT_PRESETS } from "@/lib/label-formats";
+import { safeJsonParse, badRequestResponse } from "@/lib/api-utils";
 
 // Schema for creating custom label formats
 const createFormatSchema = z.object({
@@ -79,7 +80,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await req.json();
+    const body = await safeJsonParse(req);
+    if (!body) return badRequestResponse();
     const data = createFormatSchema.parse(body);
 
     const format = await db.labelFormat.create({
@@ -114,7 +116,8 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await req.json();
+    const body = await safeJsonParse(req);
+    if (!body) return badRequestResponse();
     const { formatId } = z.object({ formatId: z.string().nullable() }).parse(body);
 
     // Verify format exists and is accessible

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { safeJsonParse, badRequestResponse } from "@/lib/api-utils";
 
 const registerSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -22,7 +23,8 @@ function slugify(text: string): string {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const body = await safeJsonParse(req);
+    if (!body) return badRequestResponse();
     const validatedData = registerSchema.parse(body);
 
     // Verify invite code from database

@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import { BillingManager } from "@/components/settings/billing-manager";
 export default async function SettingsPage() {
   const session = await auth();
   if (!session?.user?.organizationId) {
-    return null;
+    redirect("/login");
   }
 
   const organization = await db.organization.findUnique({
@@ -27,7 +28,7 @@ export default async function SettingsPage() {
   });
 
   if (!organization) {
-    return null;
+    redirect("/login");
   }
 
   const isAdmin = session.user.role === "OWNER" || session.user.role === "ADMIN";

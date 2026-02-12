@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { safeJsonParse, badRequestResponse } from "@/lib/api-utils";
 
 const createSketchSchema = z.object({
   url: z.string().url("Invalid URL"),
@@ -80,7 +81,8 @@ export async function POST(
       return NextResponse.json({ message: "Character not found" }, { status: 404 });
     }
 
-    const body = await req.json();
+    const body = await safeJsonParse(req);
+    if (!body) return badRequestResponse();
     const data = createSketchSchema.parse(body);
 
     // Get the next sort order

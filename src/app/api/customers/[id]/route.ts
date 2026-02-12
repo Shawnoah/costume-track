@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { isAdminRole } from "@/lib/utils";
+import { safeJsonParse, badRequestResponse } from "@/lib/api-utils";
 
 const customerSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -65,7 +66,8 @@ export async function PUT(
     }
 
     const { id } = await params;
-    const body = await req.json();
+    const body = await safeJsonParse(req);
+    if (!body) return badRequestResponse();
     const data = customerSchema.parse(body);
 
     const existing = await db.customer.findFirst({
@@ -127,6 +129,18 @@ export async function DELETE(
 
     if (!existing) {
       return NextResponse.json({ message: "Not found" }, { status: 404 });
+    }
+
+    // Check for active rentals before deleting
+    const activeRentals = await db.rental.count({
+      where: { customerId: id, status: "ACTIVE" },
+    });
+
+    if (activeRentals > 0) {
+      return NextResponse.json(
+        { message: `Cannot delete customer with ${activeRentals} active rental${activeRentals !== 1 ? "s" : ""}. Return all rentals first.` },
+        { status: 409 }
+      );
     }
 
     await db.customer.delete({ where: { id } });

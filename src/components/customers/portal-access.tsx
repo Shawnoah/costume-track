@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { ExternalLink, Copy, Check, Link2, RefreshCw, Loader2 } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface PortalAccessProps {
   customerId: string;
@@ -28,6 +29,7 @@ export function PortalAccess({
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [regenConfirmOpen, setRegenConfirmOpen] = useState(false);
   const [origin, setOrigin] = useState("");
 
   useEffect(() => {
@@ -62,11 +64,12 @@ export function PortalAccess({
     }
   };
 
-  const handleRegenerate = async () => {
-    if (!confirm("This will invalidate the current portal link. Continue?")) {
-      return;
-    }
+  const handleRegenerate = () => {
+    setRegenConfirmOpen(true);
+  };
 
+  const confirmRegenerate = async () => {
+    setRegenConfirmOpen(false);
     setLoading(true);
     setError(null);
 
@@ -199,6 +202,16 @@ export function PortalAccess({
           </p>
         )}
       </CardContent>
+
+      <ConfirmDialog
+        open={regenConfirmOpen}
+        onOpenChange={setRegenConfirmOpen}
+        onConfirm={confirmRegenerate}
+        title="Regenerate portal link?"
+        description="This will invalidate the current portal link. Anyone using the old link will no longer be able to access the portal."
+        confirmLabel="Regenerate"
+        variant="destructive"
+      />
     </Card>
   );
 }

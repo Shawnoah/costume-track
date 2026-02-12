@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { randomBytes } from "crypto";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { isAdminRole } from "@/lib/utils";
+import { safeJsonParse, badRequestResponse } from "@/lib/api-utils";
 
 const portalSchema = z.object({
   enabled: z.boolean().optional(),
@@ -25,7 +27,8 @@ export async function PUT(
     }
 
     const { id } = await params;
-    const body = await req.json();
+    const body = await safeJsonParse(req);
+    if (!body) return badRequestResponse();
     const data = portalSchema.parse(body);
 
     // Verify ownership
@@ -82,11 +85,5 @@ export async function PUT(
 }
 
 function generateToken(): string {
-  // Generate a secure random token
-  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-  let token = "";
-  for (let i = 0; i < 32; i++) {
-    token += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return token;
+  return randomBytes(24).toString("hex");
 }

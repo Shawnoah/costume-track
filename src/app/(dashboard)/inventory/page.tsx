@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,7 +49,7 @@ export default async function InventoryPage({
 }) {
   const session = await auth();
   if (!session?.user?.organizationId) {
-    return null;
+    redirect("/login");
   }
 
   const params = await searchParams;

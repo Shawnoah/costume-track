@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, Eye, RotateCcw, Loader2, Check } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface RentalAgreementEditorProps {
   initialText: string | null;
@@ -52,6 +53,8 @@ export function RentalAgreementEditor({ initialText }: RentalAgreementEditorProp
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
 
   const handleSave = async () => {
     setLoading(true);
@@ -80,15 +83,21 @@ export function RentalAgreementEditor({ initialText }: RentalAgreementEditorProp
   };
 
   const handleReset = () => {
-    if (confirm("Reset to the default agreement template? Your custom changes will be lost.")) {
-      setText(DEFAULT_AGREEMENT);
-    }
+    setResetConfirmOpen(true);
+  };
+
+  const confirmReset = () => {
+    setText(DEFAULT_AGREEMENT);
+    setResetConfirmOpen(false);
   };
 
   const handleClear = () => {
-    if (confirm("Remove the rental agreement? Customers will not see an agreement when renting.")) {
-      setText("");
-    }
+    setClearConfirmOpen(true);
+  };
+
+  const confirmClear = () => {
+    setText("");
+    setClearConfirmOpen(false);
   };
 
   return (
@@ -182,28 +191,112 @@ export function RentalAgreementEditor({ initialText }: RentalAgreementEditorProp
           </Button>
         </div>
       </CardContent>
+
+      <ConfirmDialog
+        open={resetConfirmOpen}
+        onOpenChange={setResetConfirmOpen}
+        onConfirm={confirmReset}
+        title="Reset to default template?"
+        description="Your custom agreement text will be replaced with the default template. You can save afterwards to persist the change."
+        confirmLabel="Reset"
+        variant="default"
+      />
+
+      <ConfirmDialog
+        open={clearConfirmOpen}
+        onOpenChange={setClearConfirmOpen}
+        onConfirm={confirmClear}
+        title="Remove rental agreement?"
+        description="The rental agreement will be cleared. Customers will not see an agreement when renting. You can save afterwards to persist the change."
+        confirmLabel="Clear"
+        variant="destructive"
+      />
     </Card>
   );
 }
 
-// Simple markdown preview (basic formatting)
+// Simple markdown preview (safe text rendering without dangerouslySetInnerHTML)
 function MarkdownPreview({ text }: { text: string }) {
-  // Convert basic markdown to HTML
-  const html = text
-    // Headers
-    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-    .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-    .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-    // Bold
-    .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
-    // Italic
-    .replace(/\*(.*)\*/gim, '<em>$1</em>')
-    // Lists
-    .replace(/^\- (.*$)/gim, '<li>$1</li>')
-    // Paragraphs
-    .split('\n\n')
-    .map(p => p.startsWith('<') ? p : `<p>${p}</p>`)
-    .join('\n');
+  const blocks = text.split('\n\n');
 
-  return <div dangerouslySetInnerHTML={{ __html: html }} />;
+  return (
+    <div className="space-y-3">
+      {blocks.map((block, i) => {
+        const lines = block.split('\n');
+        return (
+          <div key={i}>
+            {lines.map((line, j) => {
+              const trimmed = line.trim();
+
+              // Headers
+              if (trimmed.startsWith('### ')) {
+                return <h3 key={j} className="text-base font-semibold mt-4 mb-1">{formatInline(trimmed.slice(4))}</h3>;
+              }
+              if (trimmed.startsWith('## ')) {
+                return <h2 key={j} className="text-lg font-semibold mt-5 mb-2">{formatInline(trimmed.slice(3))}</h2>;
+              }
+              if (trimmed.startsWith('# ')) {
+                return <h1 key={j} className="text-xl font-bold mt-6 mb-2">{formatInline(trimmed.slice(2))}</h1>;
+              }
+
+              // List items
+              if (trimmed.startsWith('- ')) {
+                return (
+                  <div key={j} className="flex gap-2 ml-4">
+                    <span className="text-zinc-500">•</span>
+                    <span>{formatInline(trimmed.slice(2))}</span>
+                  </div>
+                );
+              }
+
+              // Empty lines
+              if (!trimmed) return null;
+
+              // Regular paragraph
+              return <p key={j}>{formatInline(trimmed)}</p>;
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Format inline markdown (bold/italic) safely using React elements
+function formatInline(text: string): React.ReactNode {
+  const parts: React.ReactNode[] = [];
+  let remaining = text;
+  let key = 0;
+
+  while (remaining.length > 0) {
+    // Bold
+    const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
+    // Italic
+    const italicMatch = remaining.match(/\*(.+?)\*/);
+
+    const match = boldMatch && italicMatch
+      ? (boldMatch.index! <= italicMatch.index! ? boldMatch : italicMatch)
+      : boldMatch || italicMatch;
+
+    if (!match || match.index === undefined) {
+      parts.push(remaining);
+      break;
+    }
+
+    // Add text before match
+    if (match.index > 0) {
+      parts.push(remaining.slice(0, match.index));
+    }
+
+    const isBold = match[0].startsWith('**');
+    if (isBold) {
+      parts.push(<strong key={key++}>{match[1]}</strong>);
+    } else {
+      parts.push(<em key={key++}>{match[1]}</em>);
+    }
+
+    remaining = remaining.slice(match.index + match[0].length);
+  }
+
+  return parts.length === 1 ? parts[0] : parts;
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { safeJsonParse, badRequestResponse } from "@/lib/api-utils";
 
 const updateCodeSchema = z.object({
   description: z.string().optional(),
@@ -21,7 +22,8 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const body = await req.json();
+    const body = await safeJsonParse(req);
+    if (!body) return badRequestResponse();
     const data = updateCodeSchema.parse(body);
 
     const inviteCode = await db.systemInviteCode.update({

@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +22,7 @@ export default async function RentalDetailPage({
 }) {
   const session = await auth();
   if (!session?.user?.organizationId) {
-    return null;
+    redirect("/login");
   }
 
   const { id } = await params;

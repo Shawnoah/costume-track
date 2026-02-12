@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { stripe, PLAN_PRICES, PLAN_LIMITS } from "@/lib/stripe";
 import { z } from "zod";
 import { isAdminRole } from "@/lib/utils";
+import { safeJsonParse, badRequestResponse } from "@/lib/api-utils";
 
 const checkoutSchema = z.object({
   planTier: z.enum(["CORE", "PRO", "TEAM"]),
@@ -31,7 +32,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const body = await req.json();
+    const body = await safeJsonParse(req);
+    if (!body) return badRequestResponse();
     const { planTier, storageSize, billingCycle } = checkoutSchema.parse(body);
 
     // Get the organization

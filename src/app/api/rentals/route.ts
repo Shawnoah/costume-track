@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { parsePaginationParams, createPaginatedResponse } from "@/lib/pagination";
+import { safeJsonParse, badRequestResponse } from "@/lib/api-utils";
 
 const rentalSchema = z.object({
   customerId: z.string().min(1, "Customer is required"),
@@ -27,7 +28,8 @@ export async function POST(req: Request) {
 
     const { organizationId, id: userId } = session.user;
 
-    const body = await req.json();
+    const body = await safeJsonParse(req);
+    if (!body) return badRequestResponse();
     const data = rentalSchema.parse(body);
 
     // Create rental and update item statuses in a transaction

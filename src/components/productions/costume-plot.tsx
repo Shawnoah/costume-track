@@ -47,6 +47,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useDropzone } from "react-dropzone";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface CharacterSketch {
   id: string;
@@ -145,6 +146,10 @@ export function CostumePlot({
   } | null>(null);
   const [measurementsDialog, setMeasurementsDialog] = useState<Character | null>(null);
   const [sketchesDialog, setSketchesDialog] = useState<Character | null>(null);
+  const [deleteCharacterConfirmOpen, setDeleteCharacterConfirmOpen] = useState(false);
+  const [characterToDelete, setCharacterToDelete] = useState<string | null>(null);
+  const [deleteSceneConfirmOpen, setDeleteSceneConfirmOpen] = useState(false);
+  const [sceneToDelete, setSceneToDelete] = useState<string | null>(null);
 
   // Form states
   const [loading, setLoading] = useState(false);
@@ -200,7 +205,7 @@ export function CostumePlot({
       if (!res.ok) throw new Error("Failed to add character");
 
       const newCharacter = await res.json();
-      setCharacters([...characters, newCharacter]);
+      setCharacters([...characters, { ...newCharacter, sketches: [] }]);
       setCharacterName("");
       setActorName("");
       setAddCharacterOpen(false);
@@ -211,23 +216,31 @@ export function CostumePlot({
     }
   }
 
-  async function handleDeleteCharacter(characterId: string) {
-    if (!confirm("Delete this character and all their costume assignments?")) return;
+  function handleDeleteCharacter(characterId: string) {
+    setCharacterToDelete(characterId);
+    setDeleteCharacterConfirmOpen(true);
+  }
+
+  async function confirmDeleteCharacter() {
+    if (!characterToDelete) return;
 
     try {
       const res = await fetch(
-        `/api/productions/${production.id}/characters/${characterId}`,
+        `/api/productions/${production.id}/characters/${characterToDelete}`,
         { method: "DELETE" }
       );
 
       if (!res.ok) throw new Error("Failed to delete character");
 
-      setCharacters(characters.filter((c) => c.id !== characterId));
+      setCharacters(characters.filter((c) => c.id !== characterToDelete));
       const newAssignments = { ...assignments };
-      delete newAssignments[characterId];
+      delete newAssignments[characterToDelete];
       setAssignments(newAssignments);
     } catch (error) {
       console.error(error);
+    } finally {
+      setDeleteCharacterConfirmOpen(false);
+      setCharacterToDelete(null);
     }
   }
 
@@ -261,26 +274,34 @@ export function CostumePlot({
     }
   }
 
-  async function handleDeleteScene(sceneId: string) {
-    if (!confirm("Delete this scene and all costume assignments in it?")) return;
+  function handleDeleteScene(sceneId: string) {
+    setSceneToDelete(sceneId);
+    setDeleteSceneConfirmOpen(true);
+  }
+
+  async function confirmDeleteScene() {
+    if (!sceneToDelete) return;
 
     try {
       const res = await fetch(
-        `/api/productions/${production.id}/scenes/${sceneId}`,
+        `/api/productions/${production.id}/scenes/${sceneToDelete}`,
         { method: "DELETE" }
       );
 
       if (!res.ok) throw new Error("Failed to delete scene");
 
-      setScenes(scenes.filter((s) => s.id !== sceneId));
+      setScenes(scenes.filter((s) => s.id !== sceneToDelete));
       // Remove assignments for this scene
       const newAssignments = { ...assignments };
       for (const charId of Object.keys(newAssignments)) {
-        delete newAssignments[charId][sceneId];
+        delete newAssignments[charId][sceneToDelete];
       }
       setAssignments(newAssignments);
     } catch (error) {
       console.error(error);
+    } finally {
+      setDeleteSceneConfirmOpen(false);
+      setSceneToDelete(null);
     }
   }
 
@@ -505,7 +526,7 @@ export function CostumePlot({
       setCharacters(
         characters.map((c) =>
           c.id === sketchesDialog.id
-            ? { ...c, sketches: c.sketches.filter((s) => s.id !== sketchId) }
+            ? { ...c, sketches: (c.sketches || []).filter((s) => s.id !== sketchId) }
             : c
         )
       );
@@ -668,7 +689,7 @@ export function CostumePlot({
                           title="Costume sketches"
                         >
                           <ImageIcon className="w-3.5 h-3.5" />
-                          {character.sketches.length > 0 && (
+                          {character.sketches?.length > 0 && (
                             <span className="absolute -top-1 -right-1 w-3 h-3 bg-purple-500 rounded-full text-[8px] flex items-center justify-center text-white">
                               {character.sketches.length}
                             </span>
@@ -1185,6 +1206,28 @@ export function CostumePlot({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Character Confirm */}
+      <ConfirmDialog
+        open={deleteCharacterConfirmOpen}
+        onOpenChange={setDeleteCharacterConfirmOpen}
+        onConfirm={confirmDeleteCharacter}
+        title="Delete character?"
+        description="This will delete the character and all their costume assignments. This action cannot be undone."
+        confirmLabel="Delete"
+        variant="destructive"
+      />
+
+      {/* Delete Scene Confirm */}
+      <ConfirmDialog
+        open={deleteSceneConfirmOpen}
+        onOpenChange={setDeleteSceneConfirmOpen}
+        onConfirm={confirmDeleteScene}
+        title="Delete scene?"
+        description="This will delete the scene and all costume assignments in it. This action cannot be undone."
+        confirmLabel="Delete"
+        variant="destructive"
+      />
 
       {/* Sketches Dialog */}
       <Dialog open={!!sketchesDialog} onOpenChange={() => setSketchesDialog(null)}>

@@ -16,6 +16,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tags, Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface Category {
   id: string;
@@ -40,6 +41,8 @@ export function CategoryManager({ categories: initialCategories }: CategoryManag
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -115,13 +118,16 @@ export function CategoryManager({ categories: initialCategories }: CategoryManag
     }
   };
 
-  const handleDelete = async (category: Category) => {
-    if (!confirm(`Delete "${category.name}"? Costumes in this category will become uncategorized.`)) {
-      return;
-    }
+  const handleDelete = (category: Category) => {
+    setCategoryToDelete(category);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!categoryToDelete) return;
 
     try {
-      const res = await fetch(`/api/categories/${category.id}`, {
+      const res = await fetch(`/api/categories/${categoryToDelete.id}`, {
         method: "DELETE",
       });
 
@@ -129,11 +135,14 @@ export function CategoryManager({ categories: initialCategories }: CategoryManag
         throw new Error("Failed to delete");
       }
 
-      setCategories(categories.filter((c) => c.id !== category.id));
+      setCategories(categories.filter((c) => c.id !== categoryToDelete.id));
       router.refresh();
     } catch (err) {
       console.error("Delete error:", err);
-      alert("Failed to delete category");
+      setError("Failed to delete category");
+    } finally {
+      setDeleteConfirmOpen(false);
+      setCategoryToDelete(null);
     }
   };
 
@@ -291,6 +300,16 @@ export function CategoryManager({ categories: initialCategories }: CategoryManag
           </div>
         )}
       </CardContent>
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        onConfirm={confirmDelete}
+        title={`Delete "${categoryToDelete?.name}"?`}
+        description="Costumes in this category will become uncategorized. This action cannot be undone."
+        confirmLabel="Delete"
+        variant="destructive"
+      />
     </Card>
   );
 }

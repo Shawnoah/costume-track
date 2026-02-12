@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +28,7 @@ export default async function CustomersPage({
 }) {
   const session = await auth();
   if (!session?.user?.organizationId) {
-    return null;
+    redirect("/login");
   }
 
   const params = await searchParams;
@@ -68,13 +69,14 @@ export default async function CustomersPage({
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-100">Customers</h1>
-          <p className="text-zinc-400">Manage your customer database</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-zinc-100">Customers</h1>
+          <p className="text-sm text-zinc-400">Manage your customer database</p>
         </div>
-        <Button asChild className="bg-purple-600 hover:bg-purple-700">
+        <Button asChild size="sm" className="bg-purple-600 hover:bg-purple-700">
           <Link href="/customers/new">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Customer
+            <Plus className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Add Customer</span>
+            <span className="sm:hidden">Add</span>
           </Link>
         </Button>
       </div>
@@ -86,6 +88,7 @@ export default async function CustomersPage({
           <Input
             name="search"
             placeholder="Search customers..."
+            aria-label="Search customers"
             defaultValue={search}
             className="pl-9 bg-zinc-900 border-zinc-800 text-zinc-100 placeholder:text-zinc-500"
           />

@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,7 +43,7 @@ export default async function RentalsPage({
 }) {
   const session = await auth();
   if (!session?.user?.organizationId) {
-    return null;
+    redirect("/login");
   }
 
   const params = await searchParams;
@@ -90,13 +91,14 @@ export default async function RentalsPage({
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-100">Rentals</h1>
-          <p className="text-zinc-400">Manage costume rentals and check-outs</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-zinc-100">Rentals</h1>
+          <p className="text-sm text-zinc-400">Manage costume rentals and check-outs</p>
         </div>
-        <Button asChild className="bg-purple-600 hover:bg-purple-700">
+        <Button asChild size="sm" className="bg-purple-600 hover:bg-purple-700">
           <Link href="/rentals/new">
-            <Plus className="w-4 h-4 mr-2" />
-            New Rental
+            <Plus className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">New Rental</span>
+            <span className="sm:hidden">New</span>
           </Link>
         </Button>
       </div>

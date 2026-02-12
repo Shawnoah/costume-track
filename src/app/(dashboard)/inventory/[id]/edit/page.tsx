@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { CostumeForm } from "@/components/inventory/costume-form";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
@@ -12,7 +12,7 @@ export default async function EditCostumePage({
 }) {
   const session = await auth();
   if (!session?.user?.organizationId) {
-    return null;
+    redirect("/login");
   }
 
   const { id } = await params;

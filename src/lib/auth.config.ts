@@ -2,10 +2,23 @@ import type { NextAuthConfig } from "next-auth";
 
 // This config is used by middleware (Edge runtime) - no Prisma here
 export const authConfig: NextAuthConfig = {
+  secret: process.env.AUTH_SECRET,
   pages: {
     signIn: "/login",
   },
   callbacks: {
+    // Session callback must be here so middleware can map custom JWT fields to session.user
+    session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.id as string;
+        session.user.role = token.role as string;
+        session.user.organizationId = token.organizationId as string | null;
+        session.user.organizationName = token.organizationName as string | null;
+        session.user.isSystemAdmin = token.isSystemAdmin as boolean;
+        session.user.image = token.image as string | null;
+      }
+      return session;
+    },
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
       const hasOrganization = !!auth?.user?.organizationId;

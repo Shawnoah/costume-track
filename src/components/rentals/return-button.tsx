@@ -22,9 +22,11 @@ export function ReturnRentalButton({ rentalId }: ReturnRentalButtonProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleReturn() {
     setLoading(true);
+    setError(null);
 
     try {
       const res = await fetch(`/api/rentals/${rentalId}/return`, {
@@ -32,7 +34,8 @@ export function ReturnRentalButton({ rentalId }: ReturnRentalButtonProps) {
       });
 
       if (!res.ok) {
-        console.error("Failed to return rental");
+        const data = await res.json().catch(() => null);
+        setError(data?.message || "Failed to return rental. Please try again.");
         setLoading(false);
         return;
       }
@@ -40,7 +43,7 @@ export function ReturnRentalButton({ rentalId }: ReturnRentalButtonProps) {
       setOpen(false);
       router.refresh();
     } catch {
-      console.error("Failed to return rental");
+      setError("Network error. Please check your connection and try again.");
       setLoading(false);
     }
   }
@@ -61,6 +64,11 @@ export function ReturnRentalButton({ rentalId }: ReturnRentalButtonProps) {
             the costume statuses back to available.
           </DialogDescription>
         </DialogHeader>
+        {error && (
+          <p className="text-sm text-red-400 bg-red-600/10 border border-red-600/20 rounded-lg px-3 py-2">
+            {error}
+          </p>
+        )}
         <DialogFooter>
           <Button
             variant="outline"

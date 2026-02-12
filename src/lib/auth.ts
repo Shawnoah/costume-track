@@ -136,16 +136,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       return token;
     },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
-        session.user.organizationId = token.organizationId as string | null;
-        session.user.organizationName = token.organizationName as string | null;
-        session.user.isSystemAdmin = token.isSystemAdmin as boolean;
-        session.user.image = token.image as string | null;
-      }
-      return session;
-    },
+    // session callback is inherited from authConfig
   },
 });

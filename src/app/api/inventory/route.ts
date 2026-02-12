@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { parsePaginationParams, createPaginatedResponse } from "@/lib/pagination";
+import { safeJsonParse, badRequestResponse } from "@/lib/api-utils";
 
 const photoSchema = z.object({
   id: z.string().optional(),
@@ -37,8 +38,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await req.json();
-    const { photos, ...data } = costumeSchema.parse(body);
+    const body = await safeJsonParse(req);
+    if (!body) return badRequestResponse();
+    const { photos, ...data } = costumeSchema.parse(body as Record<string, unknown>);
 
     const costume = await db.costumeItem.create({
       data: {

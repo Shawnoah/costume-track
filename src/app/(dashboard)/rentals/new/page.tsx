@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { RentalForm } from "@/components/rentals/rental-form";
 import Link from "next/link";
@@ -7,7 +8,7 @@ import { ChevronLeft } from "lucide-react";
 export default async function NewRentalPage() {
   const session = await auth();
   if (!session?.user?.organizationId) {
-    return null;
+    redirect("/login");
   }
 
   const [customers, productions, availableCostumes] = await Promise.all([

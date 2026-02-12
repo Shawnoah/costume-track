@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { safeJsonParse, badRequestResponse } from "@/lib/api-utils";
 
 const onboardingSchema = z.object({
   organizationName: z.string().min(2).max(100),
@@ -54,7 +55,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const body = await req.json();
+    const body = await safeJsonParse(req);
+    if (!body) return badRequestResponse();
     const { organizationName } = onboardingSchema.parse(body);
 
     // Generate unique slug

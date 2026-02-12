@@ -59,6 +59,7 @@ export function InventoryFilters({
         <Input
           name="search"
           placeholder="Search costumes..."
+          aria-label="Search costumes"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9 bg-zinc-900 border-zinc-800 text-zinc-100 placeholder:text-zinc-500"

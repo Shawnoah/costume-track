@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { CostumeForm } from "@/components/inventory/costume-form";
 import Link from "next/link";
@@ -11,7 +12,7 @@ interface PageProps {
 export default async function NewCostumePage({ searchParams }: PageProps) {
   const session = await auth();
   if (!session?.user?.organizationId) {
-    return null;
+    redirect("/login");
   }
 
   const params = await searchParams;

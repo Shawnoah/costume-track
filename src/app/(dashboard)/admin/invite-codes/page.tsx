@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/table";
 import { Plus, Trash2, Loader2, Copy, Check, ShieldAlert } from "lucide-react";
 import { format } from "date-fns";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface InviteCode {
   id: string;
@@ -46,6 +47,8 @@ export default function InviteCodesPage() {
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [codeToDelete, setCodeToDelete] = useState<string | null>(null);
 
   // Form state
   const [newCode, setNewCode] = useState("");
@@ -120,12 +123,18 @@ export default function InviteCodesPage() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Are you sure you want to delete this invite code?")) return;
+  function handleDelete(id: string) {
+    setCodeToDelete(id);
+    setDeleteConfirmOpen(true);
+  }
 
-    setDeleting(id);
+  async function confirmDelete() {
+    if (!codeToDelete) return;
+
+    setDeleteConfirmOpen(false);
+    setDeleting(codeToDelete);
     try {
-      const res = await fetch(`/api/admin/invite-codes/${id}`, {
+      const res = await fetch(`/api/admin/invite-codes/${codeToDelete}`, {
         method: "DELETE",
       });
 
@@ -135,6 +144,7 @@ export default function InviteCodesPage() {
       setError("Failed to delete code");
     } finally {
       setDeleting(null);
+      setCodeToDelete(null);
     }
   }
 
@@ -362,6 +372,16 @@ export default function InviteCodesPage() {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        onConfirm={confirmDelete}
+        title="Delete invite code?"
+        description="Are you sure you want to delete this invite code? This action cannot be undone."
+        confirmLabel="Delete"
+        variant="destructive"
+      />
     </div>
   );
 }

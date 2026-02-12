@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { safeJsonParse, badRequestResponse } from "@/lib/api-utils";
 
 const createCodeSchema = z.object({
   code: z.string().min(4, "Code must be at least 4 characters").max(32),
@@ -38,7 +39,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }
 
-    const body = await req.json();
+    const body = await safeJsonParse(req);
+    if (!body) return badRequestResponse();
     const data = createCodeSchema.parse(body);
 
     // Check if code already exists

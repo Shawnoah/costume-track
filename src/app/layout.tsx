@@ -15,6 +15,18 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "CostumeTrack - Inventory & Rental Management",
   description: "Inventory management and rental tracking for costume shops, theaters, and costume makers.",
+  metadataBase: new URL(process.env.NEXTAUTH_URL || "https://costumetrack.com"),
+  openGraph: {
+    title: "CostumeTrack - Inventory & Rental Management",
+    description: "Inventory management and rental tracking for costume shops, theaters, and costume makers.",
+    siteName: "CostumeTrack",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "CostumeTrack",
+    description: "Inventory management and rental tracking for costume shops, theaters, and costume makers.",
+  },
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },

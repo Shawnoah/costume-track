@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +29,7 @@ export default async function ProductionsPage({
 }) {
   const session = await auth();
   if (!session?.user?.organizationId) {
-    return null;
+    redirect("/login");
   }
 
   const params = await searchParams;
@@ -68,13 +69,14 @@ export default async function ProductionsPage({
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-100">Productions</h1>
-          <p className="text-zinc-400">Track shows and productions</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-zinc-100">Productions</h1>
+          <p className="text-sm text-zinc-400">Track shows and productions</p>
         </div>
-        <Button asChild className="bg-purple-600 hover:bg-purple-700">
+        <Button asChild size="sm" className="bg-purple-600 hover:bg-purple-700">
           <Link href="/productions/new">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Production
+            <Plus className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Add Production</span>
+            <span className="sm:hidden">Add</span>
           </Link>
         </Button>
       </div>
@@ -86,6 +88,7 @@ export default async function ProductionsPage({
           <Input
             name="search"
             placeholder="Search productions..."
+            aria-label="Search productions"
             defaultValue={search}
             className="pl-9 bg-zinc-900 border-zinc-800 text-zinc-100 placeholder:text-zinc-500"
           />

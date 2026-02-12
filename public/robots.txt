@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /inventory
+Disallow: /rentals
+Disallow: /customers
+Disallow: /productions
+Disallow: /settings
+
+Sitemap: https://costumetrack.com/sitemap.xml

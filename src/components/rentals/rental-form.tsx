@@ -256,6 +256,7 @@ export function RentalForm({ customers, productions, availableCostumes }: Rental
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
             <Input
               placeholder="Search costumes..."
+              aria-label="Search costumes"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9 bg-zinc-800 border-zinc-700 text-zinc-100"

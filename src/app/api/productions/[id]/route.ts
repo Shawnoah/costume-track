@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { safeJsonParse, badRequestResponse } from "@/lib/api-utils";
 
 const updateProductionSchema = z.object({
   name: z.string().min(1, "Name is required").optional(),
@@ -70,7 +71,8 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const body = await req.json();
+    const body = await safeJsonParse(req);
+    if (!body) return badRequestResponse();
     const data = updateProductionSchema.parse(body);
 
     // Verify production belongs to organization

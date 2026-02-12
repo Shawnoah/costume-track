@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { safeJsonParse, badRequestResponse } from "@/lib/api-utils";
 
 const updateSceneSchema = z.object({
   name: z.string().min(1, "Scene name is required").optional(),
@@ -35,7 +36,8 @@ export async function PATCH(
       return NextResponse.json({ message: "Production not found" }, { status: 404 });
     }
 
-    const body = await req.json();
+    const body = await safeJsonParse(req);
+    if (!body) return badRequestResponse();
     const data = updateSceneSchema.parse(body);
 
     const scene = await db.productionScene.update({

@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { z } from "zod";
 import { analyzeCostumeImage, isAIConfigured, getDefaultProvider } from "@/lib/ai";
 import { isSuperAdmin } from "@/lib/superadmin";
+import { safeJsonParse, badRequestResponse } from "@/lib/api-utils";
 
 const describeSchema = z.object({
   imageUrl: z.string().url(),
@@ -65,7 +66,8 @@ export async function POST(req: Request) {
       }
     }
 
-    const body = await req.json();
+    const body = await safeJsonParse(req);
+    if (!body) return badRequestResponse();
     const { imageUrl, existingName } = describeSchema.parse(body);
 
     // Fetch the image and convert to base64

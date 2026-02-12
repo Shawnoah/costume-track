@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { put, del } from "@vercel/blob";
 import { auth } from "@/lib/auth";
+import { safeJsonParse, badRequestResponse } from "@/lib/api-utils";
 
 export async function POST(req: Request) {
   try {
@@ -48,7 +49,9 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const { url } = await req.json();
+    const body = await safeJsonParse(req);
+    if (!body) return badRequestResponse();
+    const { url } = body as { url: string };
 
     if (!url) {
       return NextResponse.json({ message: "No URL provided" }, { status: 400 });

@@ -11,6 +11,7 @@ import {
   Theater,
   ClipboardList,
   Settings,
+  HelpCircle,
   LogOut,
   Menu,
   X,
@@ -29,6 +30,7 @@ const navigation = [
   { name: "Customers", href: "/customers", icon: Users },
   { name: "Productions", href: "/productions", icon: Theater },
   { name: "Settings", href: "/settings", icon: Settings },
+  { name: "Help", href: "/help", icon: HelpCircle },
 ];
 
 const adminNavigation = [

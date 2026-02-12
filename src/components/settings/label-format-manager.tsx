@@ -17,6 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tag, Plus, Trash2, Loader2, Check, Printer } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface LabelFormat {
   id: string;
@@ -35,6 +36,8 @@ export function LabelFormatManager() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [formatToDelete, setFormatToDelete] = useState<LabelFormat | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -131,30 +134,36 @@ export function LabelFormatManager() {
     }
   };
 
-  const handleDelete = async (format: LabelFormat) => {
+  const handleDelete = (format: LabelFormat) => {
     if (format.isPreset) {
-      alert("Cannot delete preset formats");
+      setError("Cannot delete preset formats");
       return;
     }
 
-    if (!confirm(`Delete "${format.name}"?`)) {
-      return;
-    }
+    setFormatToDelete(format);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!formatToDelete) return;
 
     try {
-      const res = await fetch(`/api/label-formats?id=${format.id}`, {
+      const res = await fetch(`/api/label-formats?id=${formatToDelete.id}`, {
         method: "DELETE",
       });
 
       if (res.ok) {
-        setFormats(formats.filter((f) => f.id !== format.id));
-        if (selectedFormatId === format.id) {
+        setFormats(formats.filter((f) => f.id !== formatToDelete.id));
+        if (selectedFormatId === formatToDelete.id) {
           setSelectedFormatId(null);
         }
       }
     } catch (err) {
       console.error("Delete error:", err);
-      alert("Failed to delete format");
+      setError("Failed to delete format");
+    } finally {
+      setDeleteConfirmOpen(false);
+      setFormatToDelete(null);
     }
   };
 
@@ -339,6 +348,16 @@ export function LabelFormatManager() {
           </div>
         )}
       </CardContent>
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        onConfirm={confirmDelete}
+        title={`Delete "${formatToDelete?.name}"?`}
+        description="This custom label format will be permanently removed. This action cannot be undone."
+        confirmLabel="Delete"
+        variant="destructive"
+      />
     </Card>
   );
 }

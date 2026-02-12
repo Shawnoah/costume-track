@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { isAdminRole } from "@/lib/utils";
+import { safeJsonParse, badRequestResponse } from "@/lib/api-utils";
 
 const photoSchema = z.object({
   id: z.string().optional(),
@@ -78,7 +79,8 @@ export async function PUT(
     }
 
     const { id } = await params;
-    const body = await req.json();
+    const body = await safeJsonParse(req);
+    if (!body) return badRequestResponse();
     const { photos, ...data } = costumeSchema.parse(body);
 
     // Verify ownership
@@ -189,6 +191,29 @@ export async function DELETE(
 
     if (!existing) {
       return NextResponse.json({ message: "Not found" }, { status: 404 });
+    }
+
+    // Check if costume is currently rented
+    if (existing.status === "RENTED") {
+      return NextResponse.json(
+        { message: "Cannot delete a costume that is currently rented out. Return it first." },
+        { status: 409 }
+      );
+    }
+
+    // Check for active rental items
+    const activeRentalItems = await db.rentalItem.count({
+      where: {
+        costumeItemId: id,
+        rental: { status: "ACTIVE" },
+      },
+    });
+
+    if (activeRentalItems > 0) {
+      return NextResponse.json(
+        { message: "Cannot delete a costume that is part of an active rental. Return the rental first." },
+        { status: 409 }
+      );
     }
 
     await db.costumeItem.delete({ where: { id } });

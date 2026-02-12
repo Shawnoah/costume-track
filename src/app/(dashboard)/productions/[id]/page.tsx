@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ProductionDetail } from "@/components/productions/production-detail";
 
 interface PageProps {
@@ -10,7 +10,7 @@ interface PageProps {
 export default async function ProductionPage({ params }: PageProps) {
   const session = await auth();
   if (!session?.user?.organizationId) {
-    return null;
+    redirect("/login");
   }
 
   const { id } = await params;

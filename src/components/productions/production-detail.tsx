@@ -422,7 +422,7 @@ export function ProductionDetail({ production }: ProductionProps) {
                         </Link>
                       </TableCell>
                       <TableCell className="text-zinc-400">
-                        {rental.items.length} item{rental.items.length !== 1 ? "s" : ""}
+                        {rental.items?.length || 0} item{(rental.items?.length || 0) !== 1 ? "s" : ""}
                       </TableCell>
                       <TableCell className="text-zinc-400">
                         {format(new Date(rental.checkoutDate), "MMM d, yyyy")}

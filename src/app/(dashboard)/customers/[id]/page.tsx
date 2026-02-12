@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { CustomerForm } from "@/components/customers/customer-form";
 import { PortalAccess } from "@/components/customers/portal-access";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { isAdminRole } from "@/lib/utils";
@@ -14,7 +14,7 @@ export default async function EditCustomerPage({
 }) {
   const session = await auth();
   if (!session?.user?.organizationId) {
-    return null;
+    redirect("/login");
   }
 
   const isAdmin = isAdminRole(session.user.role);
